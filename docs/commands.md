@@ -5,47 +5,49 @@ Commands are invoked from the commandline as such:
 haws [global-options] <command class> <sub command> [options] [parameters]
 ```
 
-There are three classes of commands:
+Use `haws help`, `haws <class> help`, or `haws class command help` to
+get help.
 
-  * Configuration
-  * Cloud formation stack
-  * HPCC cluster
-  * Data management
+There are four classes of commands:
+
+  * Configuration,
+  * Cloud formation stack,
+  * HPCC cluster, and
+  * Data management.
 
 ## Configuration
 
-The configuration is stored as a yaml file.
+The configuration is stored in a YAML file.
 Each configuration has a name.
 More than one configuration can be stored in a configuration file.
 
 The default configuration file is `~/.haws`, which can be overridden
-a commandline option.
+with a commandline option.
 Every command supports the global option `[-f configuration-file]`.
 The `~/.haws` file also contains per-user settings (don't know what
 yet).
 These settings are loaded whether or not configuration file is
-specified with `-a`.
+specified with `-f`.
 
-`haws config list [-l] [config-name]` list the configurations (by name)
+  * `haws config list [-l] [config-name]` list the configurations
 available in the configuration file.
 The long option gives additional information.
 The name parameter limits output to the named configuration.
 
-`haws config refresh` interactively update local information from AWS.
+  * `haws config refresh` interactively updates local information from AWS.
 For convenience haws maintains a local database for each user.
 This DB may get out of sync if haws is executed on different computers
 or if the AWS console is used.
 
-`haws config status stack-name` gives the status of each node in the
-named stack.
+  * `haws config status stack-name [-l]` gives the status of each node
+in the named stack.
 
 
 ## Cloud formation stack
 
-The commmands are listed below.
-All these commands accept a parameter that specifies the AWS
+All stack commands accept a parameter that specifies the AWS
 credientals, `[-a awsfile]`.
-Command gets the AWS credentials from `~/.aws` or awsfile if specified.
+Uses `~/.aws` if awsfile not specified.
 
 `haws stack create [-n stack-name] [config-name]` create a cloud
 formation stack using the named configuration.
