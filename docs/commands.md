@@ -49,46 +49,46 @@ All stack commands accept a parameter that specifies the AWS
 credientals, `[-a awsfile]`.
 Uses `~/.aws` if awsfile not specified.
 
-`haws stack create [-n stack-name] [config-name]` create a cloud
+  * `haws stack create [-n stack-name] [config-name]` creates a cloud
 formation stack using the named configuration.
 The cluster name is an integer if not given a name.
-Error if a cluster of same name exist.
+Error if a cluster of same name exists.
 
-`haws stack list` shows the active stacks.
+  * `haws stack list` shows the active stacks.
 
-`haws stack destroy [stack-name]` destroys the named stack.
+  * `haws stack destroy [stack-name]` destroys the named stack.
 
-`haws stack update [stack-name]` don't know what this does.
+  * `haws stack update [stack-name]` don't know what this does.
 But boto can update a stack.
 
 ## HPCC cluster
 
-This uses HPCC client tools commands.
+Some command use HPCC client tools commands.
 The default initialization file for these tools is `~/ecl.ini`.
 Each command in this section has the option `[-e ecl-file]` to use a
 different ECL initialization file.
 
-`haws cluster start [stack-name]` starts the cluster.
+  * `haws cluster start [stack-name]` starts the cluster.
 The configuration for the cluster was defined when the stack was
 created.
 
-`haws cluster stop [stack-name]` stops the cluster.
+  *  `haws cluster stop [stack-name]` stops the cluster.
 
-`haws cluster restart [stack-name]` restarts the cluster.
+  * `haws cluster restart [stack-name]` restarts the cluster.
 
 `haws cluster status [stack-name]` gives status of the HPCC cluster.
 What is this?
 
 ## Data management
 
-`haws data save cluster-file s3-bucket` saves all parts of the
+  * `haws data save cluster-file s3-bucket` saves all parts of the
 named cluster file to the given s3 bucket.
 
-`haws data restore [-f] s3-bucket cluster-file` restores all parts
+  * `haws data restore [-f] s3-bucket cluster-file` restores all parts
 of the named cluster file from the given s3 bucket.
 If cluster file exist, use `[-f]` (force) to overwrite.
 
-`haws data resize cluster-file [target-parts]` re-distributes a cluster
+  * `haws data resize cluster-file [target-parts]` re-distributes a cluster
 file from the number of existing parts to target number of parts.
 If target parts is not given, redistribute to number of nodes or
 number of Thor nodes.
