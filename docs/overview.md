@@ -1,7 +1,10 @@
-# HAWS
+# HAAS
 
-The tool _haws_ creates and manages HPCC clusters on AWS.
-It leverages AWS and HPCC tools as much as possible.
+The tool _haas_ (HPCC as a service)
+creates and manages HPCC clusters on clouds.
+It leverages cloud and HPCC tools as much as possible.
+
+Initial design is for AWS.
 It uses [Cloud Formation](https://aws.amazon.com/cloudformation/) to
 create a _stack_ in AWS.
 In our case the stack is the cluster.
