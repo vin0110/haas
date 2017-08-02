@@ -1,5 +1,5 @@
-# haws
-HPCC on AWS cluster management
+# HaaS
+HPCC as a service: HPCC cluster management in clouds.
 
 
 
