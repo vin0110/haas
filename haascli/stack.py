@@ -66,7 +66,17 @@ def create(ctx, stack_name, config_name):
 @cli.command()
 @click.pass_context
 def list(ctx):
-    pass
+    client = boto3.client('cloudformation')
+    response = client.list_stacks(
+        StackStatusFilter=['CREATE_IN_PROGRESS', 'CREATE_COMPLETE']
+    )
+
+    stack_records = response['StackSummaries']
+    for i in range(len(stack_records)):
+        print("Stack [{}]".format(i))
+        print("\tStackName:", stack_records[i]['StackName'])
+        print("\tStackId:", stack_records[i]['StackId'])
+        print("\tStackStatus:", stack_records[i]['StackStatus'])
 
 
 @cli.command()

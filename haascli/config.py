@@ -5,6 +5,25 @@ import click
 import yaml
 
 
+class HaaSConfiguration(object):
+    @staticmethod
+    def from_file(config_path):
+        with open(config_path, 'r') as f:
+            return HaaSConfiguration(yaml.load(f))
+
+    @staticmethod
+    def save_file(config, config_path):
+        with open(config_path, 'w') as f:
+            yaml.dump(config, f)
+
+    def __init__(self, config):
+        self.config = config
+
+    def to_file(self, config_path):
+        HaaSConfiguration.save_file(self.config, config_path)
+
+
+
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
 @click.pass_context
 def cli(ctx, **kwargs):
