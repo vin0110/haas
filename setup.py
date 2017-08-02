@@ -3,29 +3,6 @@ from setuptools import setup, find_packages
 from haascli import __version__
 
 
-'''
-setup(
-    name='haascli',
-    version='0.1',
-    py_modules=[
-        'haas',
-    ],
-    include_package_data=True,
-    install_requires=[
-        'click',
-        'executor',
-    ],
-    entry_points={
-        'console_scripts': [
-            'haas=haas:cli',
-        ]
-    }
-)
-'''
-
-print(find_packages(exclude=['tests*']))
-
-
 setup_options = dict(
     name='haascli',
     version=__version__,
@@ -37,8 +14,11 @@ setup_options = dict(
     packages=find_packages(exclude=['tests*']),
     package_data={'haascli': ['examples/*/*.rst']},
     install_requires=[
+        'boto3',
         'click',
         'executor',
+        'troposphere',
+        'awacs',
     ],
     extras_require={
         ':python_version=="3.4"': [

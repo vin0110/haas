@@ -8,8 +8,11 @@ action_prepare ()
 {
     . ${VENV_DIR}/bin/activate
     pip install awscli
-    pip install executor 2>&1 > /dev/null
-    pip install click 2>&1 > /dev/null
+    pip install boto3
+    pip install troposphere
+    pip install awacs
+    pip install executor
+    pip install click
     #pip install requests 2>&1 > /dev/null
     #pip install netifaces 2>&1 > /dev/null
     #pip install pyyaml 2>&1 > /dev/null
