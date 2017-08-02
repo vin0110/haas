@@ -1,0 +1,652 @@
+{
+    "Description": "HaaS Stack",
+    "Mappings": {
+        "RegionMap": {
+            "us-east-1": {
+                "64": "ami-24c2ee32"
+            }
+        }
+    },
+    "Parameters": {
+        "AvailabilityZone": {
+            "AllowedValues": [
+                "us-east-1d"
+            ],
+            "Default": "us-east-1d",
+            "Description": "Availability zone",
+            "Type": "String"
+        },
+        "ClusterSize": {
+            "Default": "1",
+            "Description": "Number of slave instances to be launched",
+            "Type": "Number"
+        },
+        "KeyName": {
+            "ConstraintDescription": "must be a valid keypair Id",
+            "Type": "AWS::EC2::KeyPair::KeyName"
+        },
+        "MasterInstanceType": {
+            "AllowedValues": [
+                "t2.micro",
+                "c4.large",
+                "c4.xlarge",
+                "c4.2xlarge",
+                "m4.large",
+                "m4.xlarge",
+                "m4.2xlarge",
+                "r4.large",
+                "r4.xlarge",
+                "r4.2xlarge"
+            ],
+            "Default": "c4.large",
+            "Description": "HPCC Thor Master EC2 instance type",
+            "Type": "String"
+        },
+        "NumberOfSlavesPerNode": {
+            "Default": "1",
+            "Description": "Number of THOR slave nodes per slave instance",
+            "Type": "Number"
+        },
+        "SlaveInstanceType": {
+            "AllowedValues": [
+                "t2.micro",
+                "c4.large",
+                "c4.xlarge",
+                "c4.2xlarge",
+                "m4.large",
+                "m4.xlarge",
+                "m4.2xlarge",
+                "r4.large",
+                "r4.xlarge",
+                "r4.2xlarge"
+            ],
+            "Default": "c4.large",
+            "Description": "HPCC Thor Slave EC2 instance type",
+            "Type": "String"
+        },
+        "UserNameAndPassword": {
+            "Default": "",
+            "Description": "(Optional) Enter like: username/password Used to log into ECL Watch and ECL IDE.",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "HPCCInstanceProfile": {
+            "Properties": {
+                "Path": "/",
+                "Roles": [
+                    {
+                        "Ref": "HPCCInstanceRoles"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::InstanceProfile"
+        },
+        "HPCCInstanceRoles": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "*"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        },
+                        "PolicyName": "root"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "HPCCPlacementGroup": {
+            "Properties": {
+                "Strategy": "cluster"
+            },
+            "Type": "AWS::EC2::PlacementGroup"
+        },
+        "HPCCSecurityGroups": {
+            "Properties": {
+                "GroupDescription": "Enable SSH and HTTP access on the inbound port",
+                "SecurityGroupEgress": [
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "IpProtocol": "-1"
+                    }
+                ],
+                "SecurityGroupIngress": [
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 8888,
+                        "IpProtocol": "tcp",
+                        "ToPort": 8888
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 9042,
+                        "IpProtocol": "tcp",
+                        "ToPort": 9042
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 7000,
+                        "IpProtocol": "tcp",
+                        "ToPort": 7000
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 7001,
+                        "IpProtocol": "tcp",
+                        "ToPort": 7001
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 7199,
+                        "IpProtocol": "tcp",
+                        "ToPort": 7199
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 9160,
+                        "IpProtocol": "tcp",
+                        "ToPort": 9160
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 61620,
+                        "IpProtocol": "tcp",
+                        "ToPort": 61620
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 61621,
+                        "IpProtocol": "tcp",
+                        "ToPort": 61621
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 8002,
+                        "IpProtocol": "tcp",
+                        "ToPort": 8002
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 8010,
+                        "IpProtocol": "tcp",
+                        "ToPort": 8010
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 8015,
+                        "IpProtocol": "tcp",
+                        "ToPort": 8015
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 8145,
+                        "IpProtocol": "tcp",
+                        "ToPort": 8145
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 22,
+                        "IpProtocol": "tcp",
+                        "ToPort": 22
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 0,
+                        "IpProtocol": "tcp",
+                        "ToPort": 65535
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 0,
+                        "IpProtocol": "udp",
+                        "ToPort": 65535
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 8050,
+                        "IpProtocol": "tcp",
+                        "ToPort": 8050
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 8008,
+                        "IpProtocol": "tcp",
+                        "ToPort": 8008
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 9876,
+                        "IpProtocol": "tcp",
+                        "ToPort": 9876
+                    },
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": -1,
+                        "IpProtocol": "icmp",
+                        "ToPort": -1
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "HPCCVpc"
+                }
+            },
+            "Type": "AWS::EC2::SecurityGroup"
+        },
+        "HPCCVpc": {
+            "Properties": {
+                "CidrBlock": "10.0.0.0/16",
+                "EnableDnsHostnames": "false",
+                "EnableDnsSupport": "true",
+                "InstanceTenancy": "default",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Ref": "AWS::StackName"
+                        }
+                    }
+                ]
+            },
+            "Type": "AWS::EC2::VPC"
+        },
+        "InternetGateway": {
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    },
+                                    "gateway"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Type": "AWS::EC2::InternetGateway"
+        },
+        "InternetGatewayAttachment": {
+            "Properties": {
+                "InternetGatewayId": {
+                    "Ref": "InternetGateway"
+                },
+                "VpcId": {
+                    "Ref": "HPCCVpc"
+                }
+            },
+            "Type": "AWS::EC2::VPCGatewayAttachment"
+        },
+        "MasterASG": {
+            "Properties": {
+                "DesiredCapacity": "1",
+                "HealthCheckGracePeriod": "300",
+                "HealthCheckType": "EC2",
+                "LaunchConfigurationName": {
+                    "Ref": "MasterLaunchCfg"
+                },
+                "MaxSize": "1",
+                "MinSize": "1",
+                "Tags": [
+                    {
+                        "Key": "StackName",
+                        "PropagateAtLaunch": true,
+                        "Value": {
+                            "Ref": "AWS::StackName"
+                        }
+                    },
+                    {
+                        "Key": "slavesPerNode",
+                        "PropagateAtLaunch": true,
+                        "Value": {
+                            "Ref": "NumberOfSlavesPerNode"
+                        }
+                    },
+                    {
+                        "Key": "UserNameAndPassword",
+                        "PropagateAtLaunch": true,
+                        "Value": {
+                            "Ref": "UserNameAndPassword"
+                        }
+                    },
+                    {
+                        "Key": "Name",
+                        "PropagateAtLaunch": true,
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    },
+                                    "Master"
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "VPCZoneIdentifier": [
+                    {
+                        "Ref": "Subnet"
+                    }
+                ]
+            },
+            "Type": "AWS::AutoScaling::AutoScalingGroup"
+        },
+        "MasterLaunchCfg": {
+            "Properties": {
+                "AssociatePublicIpAddress": "true",
+                "IamInstanceProfile": {
+                    "Ref": "HPCCInstanceProfile"
+                },
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "RegionMap",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        "64"
+                    ]
+                },
+                "InstanceType": {
+                    "Ref": "MasterInstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SecurityGroups": [
+                    {
+                        "Ref": "HPCCSecurityGroups"
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "#!/bin/bash",
+                                "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1",
+                                "echo [Initialization] starting the master node",
+                                {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "su - osr /bin/bash -c 'cd /home/osr/project-aws; git pull; /bin/bash scripts/auto_hpcc.sh",
+                                            {
+                                                "Ref": "AWS::StackName"
+                                            },
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            "'"
+                                        ]
+                                    ]
+                                },
+                                "echo [Initialization] completed the master node",
+                                "echo SCRIPT: 'Signal stack that setup of HPCC System is complete.'",
+                                {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "/usr/local/bin/cfn-signal -e 0 --stack ",
+                                            {
+                                                "Ref": "AWS::StackName"
+                                            },
+                                            "--resource MasterASG ",
+                                            "--region ",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            }
+                                        ]
+                                    ]
+                                },
+                                "echo SCRIPT: 'Done signaling stack that setup of HPCC System has completed.'"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Type": "AWS::AutoScaling::LaunchConfiguration"
+        },
+        "PublicRouteTable": {
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    },
+                                    "public-rt"
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "HPCCVpc"
+                }
+            },
+            "Type": "AWS::EC2::RouteTable"
+        },
+        "RouteToInternet": {
+            "DependsOn": "InternetGatewayAttachment",
+            "Properties": {
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "InternetGateway"
+                },
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                }
+            },
+            "Type": "AWS::EC2::Route"
+        },
+        "SlaveASG": {
+            "Properties": {
+                "DesiredCapacity": {
+                    "Ref": "ClusterSize"
+                },
+                "HealthCheckGracePeriod": "300",
+                "HealthCheckType": "EC2",
+                "LaunchConfigurationName": {
+                    "Ref": "SlaveLaunchCfg"
+                },
+                "MaxSize": {
+                    "Ref": "ClusterSize"
+                },
+                "MinSize": {
+                    "Ref": "ClusterSize"
+                },
+                "Tags": [
+                    {
+                        "Key": "StackName",
+                        "PropagateAtLaunch": true,
+                        "Value": {
+                            "Ref": "AWS::StackName"
+                        }
+                    },
+                    {
+                        "Key": "slavesPerNode",
+                        "PropagateAtLaunch": true,
+                        "Value": {
+                            "Ref": "NumberOfSlavesPerNode"
+                        }
+                    },
+                    {
+                        "Key": "UserNameAndPassword",
+                        "PropagateAtLaunch": true,
+                        "Value": {
+                            "Ref": "UserNameAndPassword"
+                        }
+                    },
+                    {
+                        "Key": "Name",
+                        "PropagateAtLaunch": true,
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    },
+                                    "Slave"
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "VPCZoneIdentifier": [
+                    {
+                        "Ref": "Subnet"
+                    }
+                ]
+            },
+            "Type": "AWS::AutoScaling::AutoScalingGroup"
+        },
+        "SlaveLaunchCfg": {
+            "Properties": {
+                "AssociatePublicIpAddress": "true",
+                "IamInstanceProfile": {
+                    "Ref": "HPCCInstanceProfile"
+                },
+                "ImageId": {
+                    "Fn::FindInMap": [
+                        "RegionMap",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        "64"
+                    ]
+                },
+                "InstanceType": {
+                    "Ref": "SlaveInstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "SecurityGroups": [
+                    {
+                        "Ref": "HPCCSecurityGroups"
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "#!/bin/bash",
+                                "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1",
+                                "echo [Initialization] starting the slave node",
+                                {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "su - osr /bin/bash -c 'cd /home/osr/project-aws; git pull; /bin/bash scripts/auto_hpcc.sh",
+                                            {
+                                                "Ref": "AWS::StackName"
+                                            },
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            "'"
+                                        ]
+                                    ]
+                                },
+                                "echo [Initialization] completed the slave node",
+                                "echo SCRIPT: 'Signal stack that setup of HPCC System is complete.'",
+                                {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+                                            "/usr/local/bin/cfn-signal -e 0 --stack ",
+                                            {
+                                                "Ref": "AWS::StackName"
+                                            },
+                                            "--resource SlaveASG ",
+                                            "--region ",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            }
+                                        ]
+                                    ]
+                                },
+                                "echo SCRIPT: 'Done signaling stack that setup of HPCC System has completed.'"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Type": "AWS::AutoScaling::LaunchConfiguration"
+        },
+        "Subnet": {
+            "Properties": {
+                "CidrBlock": "10.0.0.0/24",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    },
+                                    "subnet"
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "HPCCVpc"
+                }
+            },
+            "Type": "AWS::EC2::Subnet"
+        },
+        "SubnetRouteTableAssociation": {
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PublicRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "Subnet"
+                }
+            },
+            "Type": "AWS::EC2::SubnetRouteTableAssociation"
+        }
+    }
+}
