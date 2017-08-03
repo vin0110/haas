@@ -1,4 +1,5 @@
 import os
+import logging
 
 import click
 
@@ -26,6 +27,8 @@ def cli(ctx, **kwargs):
 
     if 'config_dir' not in ctx.obj:
         os.mkdirs(ctx.obj['config_dir'])
+
+    haascli.setup_logging(level=logging.DEBUG if kwargs['debug'] else logging.INFO)
 
 
 
