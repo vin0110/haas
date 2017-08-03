@@ -8,7 +8,7 @@ import yaml
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
 @click.pass_context
 def cli(ctx, **kwargs):
-    """Data related operations
+    """Config related operations
     """
     ctx.obj.update(kwargs)
 
