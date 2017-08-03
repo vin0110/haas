@@ -14,6 +14,9 @@ import haascli
               type=click.Path(exists=True, resolve_path=True),
               default=lambda: os.path.join(os.path.expanduser('~'), '.haas'),
               help="The haas configuration directory")
+@click.option('-r', '--region', help='AWS region name')
+@click.option('-k', '--key', help='AWS key')
+@click.option('-s', '--secret', help='AWS secret key')
 @click.pass_context
 def cli(ctx, **kwargs):
     """This is a command line tool for HPCC-as-a-Service (HaaS)
