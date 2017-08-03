@@ -27,36 +27,15 @@ def cli(ctx, **kwargs):
 
 @cli.command()
 @click.argument('stack_name')
-@click.argument('config_file')
-@click.pass_context
-def define(ctx, stack_name, config_file):
-    if ctx.obj['debug']:
-        click.echo('associate {} with {}'.format(stack_name, config_file))
-
-    click.echo('not implemented')
-
-
-@cli.command()
-@click.argument('stack_name')
-@click.pass_context
-def remove(ctx, stack_name):
-    if ctx.obj['debug']:
-        click.echo('disassociate {} from its config'.format(stack_name))
-
-    click.echo('not implemented')
-
-
-@cli.command()
-@click.argument('stack_name')
 @click.option('-f', '--config_file')
 @click.option('-p', '--parameter', multiple=True)
 @click.pass_context
 def create(ctx, stack_name, config_file, parameter):
     debug = ctx.obj['debug']
-    exec = ctx.obj['exec']
+    execute = ctx.obj['exec']
     if debug:
         click.echo('create {} from its config'.format(stack_name))
-        if not exec:
+        if not execute:
             click.echo(click.style('no exec mode', fg='yellow'))
 
     parameters = {}
@@ -95,7 +74,9 @@ def create(ctx, stack_name, config_file, parameter):
             click.echo('parameter {} is {}'.format(k, v))
 
     stack_id = None
-    client = boto3.client('cloudformation')
+    if execute:
+        client = boto3.client('cloudformation')
+
     # prepare parameters for boto call
     parameter_list = []
     for param in parameters:
@@ -110,7 +91,7 @@ def create(ctx, stack_name, config_file, parameter):
     try:
         if template_url.startswith('http'):
             if 's3' in template_url:
-                if not ctx.obj['exec']:
+                if not execute:
                     click.echo(click.style('not executing', fg='yellow'))
                     response = {}
                 else:
@@ -134,7 +115,7 @@ def create(ctx, stack_name, config_file, parameter):
             body = open(f, 'r').read()
 
         if body:
-            if not ctx.obj['exec']:
+            if not execute:
                 click.echo(click.style('not executing', fg='yellow'))
                 response = {}
             else:
