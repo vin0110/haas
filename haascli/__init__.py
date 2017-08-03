@@ -1,5 +1,5 @@
-import os
 import click
+import os
 import haascli.config
 import haascli.cluster
 import haascli.stack
@@ -20,10 +20,15 @@ def warning(*args):
     click.echo(click.style(msg, fg='yellow'))
 
 
+def message(*args):
+    msg = ' '.join(args)
+    click.echo(msg)
+
+
 def bad_response(response):
     '''Checks status code from boto response; return True if bad
     '''
     if response['ResponseMetadata']['HTTPStatusCode'] != 200:
-        haascli.error('status code',
-                      response['ResponseMetadata']['HTTPStatusCode'])
+        error('status code',
+              response['ResponseMetadata']['HTTPStatusCode'])
         return True

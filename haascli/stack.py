@@ -7,6 +7,7 @@ import yaml
 import requests
 import haascli
 from botocore.exceptions import ClientError, PartialCredentialsError
+from haascli import error, warning, message, bad_response
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
@@ -32,7 +33,7 @@ def cli(ctx, **kwargs):
         try:
             ctx.obj['client'] = boto3.client('cloudformation', **optargs)
         except (ClientError, PartialCredentialsError) as e:
-            haascli.error(str(e))
+            error(str(e))
             ctx.abort()
 
 
@@ -46,9 +47,9 @@ def create(ctx, stack_name, config_file, parameter):
     '''
     debug = ctx.obj['debug']
     if debug:
-        click.echo('haas stack create stack_name={}'.format(stack_name))
+        message('haas stack create stack_name={}'.format(stack_name))
         if not ctx.obj['exec']:
-            haascli.warning('no exec mode')
+            warning('no exec mode')
 
     parameters = {}
     if config_file:
@@ -58,7 +59,7 @@ def create(ctx, stack_name, config_file, parameter):
             # @TODO: assuming all config files are yaml
             parameters = yaml.load(f)
         except IOError as e:
-            haascli.error(str(e))
+            error(str(e))
             ctx.abort()
     else:
         for param in parameter:
@@ -67,7 +68,7 @@ def create(ctx, stack_name, config_file, parameter):
             except IndexError:
                 val = True
             if key in parameters:
-                haascli.warning('overwriting {} to {} was {}'.format(
+                warning('overwriting {} to {} was {}'.format(
                     key, val, parameters[key]))
             parameters[key] = val
 
@@ -76,14 +77,14 @@ def create(ctx, stack_name, config_file, parameter):
         template_url = parameters['template_url']
         del parameters['template_url']
     except KeyError as e:
-        haascli.error('must define template_url')
+        error('must define template_url')
         ctx.abort()
 
     if debug:
-        click.echo('template url is {}'.format(template_url))
+        message('template url is {}'.format(template_url))
 
         for k, v in parameters.items():
-            click.echo('parameter {} is {}'.format(k, v))
+            message('parameter {} is {}'.format(k, v))
 
     stack_id = None
 
@@ -97,7 +98,7 @@ def create(ctx, stack_name, config_file, parameter):
               '\tParameters={}\n'\
               '\tCapabilities=[\'CAPABILITY_IAM\']'\
               .format(stack_name, template_url, parameter_list)
-        click.echo(msg)
+        message(msg)
 
     try:
         client = ctx.obj['client']
@@ -139,23 +140,23 @@ def create(ctx, stack_name, config_file, parameter):
                 Capabilities=['CAPABILITY_IAM'],
             )
 
-        if haascli.bad_response(response):
+        if bad_response(response):
             ctx.abort()
         stack_id = response['StackId'] if 'StackId' in response else None
-        click.echo("StackId:", str(stack_id))
+        message("StackId:", str(stack_id))
 
     except IOError as e:
-        haascli.error(str(e))
+        error(str(e))
         ctx.abort()
     except requests.exceptions.RequestException as e:
-        haascli.error(str(e))
+        error(str(e))
         ctx.abort()
     except ClientError as e:
-        haascli.error(str(e))
+        error(str(e))
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
-            haascli.warning('not executing')
+            warning('not executing')
         else:
             raise KeyError(e)
 
@@ -168,7 +169,7 @@ def list(ctx, long, filter):
     '''lists stacks
     '''
     if ctx.obj['debug']:
-        click.echo('haas stack list long={} filter={}'.format(long, filter))
+        message('haas stack list long={} filter={}'.format(long, filter))
 
     try:
         client = ctx.obj['client']
@@ -176,7 +177,7 @@ def list(ctx, long, filter):
             response = client.list_stacks(StackStatusFilter=filter)
         else:
             response = client.list_stacks()
-        if haascli.bad_response(response):
+        if bad_response(response):
             ctx.abort()
 
         for stack in response['StackSummaries']:
@@ -188,11 +189,11 @@ def list(ctx, long, filter):
                 if 'DeletionTime' in stack:
                     print('\tDeleted:', str(stack['DeletionTime']))
     except ClientError as e:
-        haascli.error(str(e))
+        error(str(e))
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
-            haascli.warning('not executing')
+            warning('not executing')
         else:
             raise KeyError(e)
 
@@ -204,19 +205,19 @@ def delete(ctx, stack_name):
     '''Delete stack with given name or stack id
     '''
     if ctx.obj['debug']:
-        click.echo('haas stack delete stack_name={}'.format(stack_name))
+        message('haas stack delete stack_name={}'.format(stack_name))
 
     try:
         client = ctx.obj['client']
         response = client.delete_stack(StackName=stack_name)
-        if haascli.bad_response(response):
+        if bad_response(response):
             ctx.abort()
     except ClientError as e:
-        haascli.error(str(e))
+        error(str(e))
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
-            haascli.warning('not executing')
+            warning('not executing')
         else:
             raise KeyError(e)
 
