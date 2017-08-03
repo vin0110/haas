@@ -116,11 +116,19 @@ def create(ctx, stack_name, config_file, parameter):
                 r = requests.get(template_url, timeout=5.0)
                 body = r.text
         else:
-            if template_url.startswith('file:'):
-                fn = template_url[5:].strip('/')
+            if template_url.startswith('file://'):
+                fn = template_url[7:]
             else:
                 fn = template_url
-            body = open(fn, 'r').read()
+                if not os.path.isfile(fn):
+                    # didn't find the file; look in config_dir
+                    fn = os.path.join(ctx.obj['config_dir'], fn)
+            # change this to have explict close because moto
+            # was generating a warning during testing
+            # `ResourceWarning: unclosed file <_io.TextIOWrapper ...`
+            f = open(fn, 'r')
+            body = f.read()
+            f.close()
 
         if body:
             # if body is false create_stack was called above
