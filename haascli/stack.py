@@ -53,11 +53,11 @@ def remove(ctx, stack_name):
 @click.pass_context
 def create(ctx, stack_name, config_file, parameter):
     debug = ctx.obj['debug']
-    test = ctx.obj['test']
+    exec = ctx.obj['exec']
     if debug:
         click.echo('create {} from its config'.format(stack_name))
-        if test:
-            click.echo(click.style('testing mode', fg='yellow'))
+        if not exec:
+            click.echo(click.style('no exec mode', fg='yellow'))
 
     parameters = {}
     if config_file:
@@ -110,7 +110,7 @@ def create(ctx, stack_name, config_file, parameter):
     try:
         if template_url.startswith('http'):
             if 's3' in template_url:
-                if ctx.obj['test']:
+                if not ctx.obj['exec']:
                     click.echo(click.style('not executing', fg='yellow'))
                     response = {}
                 else:
@@ -134,7 +134,7 @@ def create(ctx, stack_name, config_file, parameter):
             body = open(f, 'r').read()
 
         if body:
-            if ctx.obj['test']:
+            if not ctx.obj['exec']:
                 click.echo(click.style('not executing', fg='yellow'))
                 response = {}
             else:
@@ -170,10 +170,22 @@ def create(ctx, stack_name, config_file, parameter):
 
 @cli.command()
 @click.option('-l', '--long', is_flag=True)
+@click.option('-f', '--filter', multiple=True)
 @click.pass_context
-def list(ctx, long):
+def list(ctx, long, filter):
+    if ctx.obj['debug']:
+        click.echo('haas stack list long={} filter={}'.format(long, filter))
+
+    if not ctx.obj['exec']:
+        click.echo(click.style('not executing', fg='yellow'))
+        return
+
     client = boto3.client('cloudformation')
-    response = client.list_stacks()
+    if filter:
+        response = client.list_stacks(StackStatusFilter=filter)
+    else:
+        response = client.list_stacks()
+
     for stack in response['StackSummaries']:
         print(stack['StackName'], 'status:', stack['StackStatus'])
         if long:
