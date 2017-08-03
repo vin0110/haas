@@ -1,8 +1,10 @@
+import os
 import unittest
 import boto3
 from haascli.haas import cli
 from click.testing import CliRunner
 from moto import mock_cloudformation
+from haascli import ROOT_DIR
 from utils import create_stack
 
 
@@ -32,9 +34,9 @@ class TestStackList(unittest.TestCase):
         self.mock_client = boto3.client('cloudformation')
 
         # open template body
-        f = open('tests/mock.json', 'r')
+        f = open(os.path.join(ROOT_DIR, 'tests', 'mock.json'), 'r')
         self.template_body = f.read()
-        f.close()
+        f.close()               # use explicit close to suppress moto warning
 
     def tearDown(self):
         pass
