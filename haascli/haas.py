@@ -4,6 +4,10 @@ import logging
 import click
 
 import haascli
+from haascli import config as haascli_config
+from haascli import cluster as haascli_cluster
+from haascli import stack as haascli_stack
+from haascli import data as haascli_data
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
@@ -31,8 +35,7 @@ def cli(ctx, **kwargs):
     haascli.setup_logging(level=logging.DEBUG if kwargs['debug'] else logging.INFO)
 
 
-
-cli.add_command(haascli.config.cli, name='config')
-cli.add_command(haascli.stack.cli, name='stack')
-cli.add_command(haascli.cluster.cli, name='cluster')
-cli.add_command(haascli.data.cli, name='data')
+cli.add_command(haascli_config.cli, name='config')
+cli.add_command(haascli_stack.cli, name='stack')
+cli.add_command(haascli_cluster.cli, name='cluster')
+cli.add_command(haascli_data.cli, name='data')

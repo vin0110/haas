@@ -1,12 +1,11 @@
 import os
-# import json
 
 import click
 import boto3
 import yaml
 import requests
-import haascli
 from botocore.exceptions import ClientError, PartialCredentialsError
+
 from haascli import error, warning, message, bad_response
 
 
