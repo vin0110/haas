@@ -43,4 +43,7 @@ def bad_response(response):
 
 
 def setup_logging(level=logging.INFO):
-    logging.basicConfig(level=level)
+    logging.basicConfig(
+        level=level,
+        format='%(message)s'
+    )
