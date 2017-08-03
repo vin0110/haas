@@ -15,6 +15,7 @@ from botocore.exceptions import ClientError, PartialCredentialsError
 def cli(ctx, **kwargs):
     """Stack related operations
     """
+
     optargs = {}
     if ctx.obj['region']:
         optargs['region_name'] = ctx.obj['region']
@@ -26,6 +27,7 @@ def cli(ctx, **kwargs):
         print('aws settings:\n',
               '\n'.join(['{}={}'.format(k, v) for k, v in optargs.items()]))
 
+    # open the client here instead of in all commands
     if ctx.obj['exec']:
         try:
             ctx.obj['client'] = boto3.client('cloudformation', **optargs)
@@ -40,19 +42,20 @@ def cli(ctx, **kwargs):
 @click.option('-p', '--parameter', multiple=True)
 @click.pass_context
 def create(ctx, stack_name, config_file, parameter):
+    '''Creates an AWS stack
+    '''
     debug = ctx.obj['debug']
-    execute = ctx.obj['exec']
     if debug:
         click.echo('haas stack create stack_name={}'.format(stack_name))
-        if not execute:
-            click.echo(click.style('no exec mode', fg='yellow'))
+        if not ctx.obj['exec']:
+            haascli.warning('no exec mode')
 
     parameters = {}
     if config_file:
         config_path = os.path.join(ctx.obj['config_dir'], config_file)
         try:
             f = open(config_path, 'r')
-            # @TODO: assuming all files are yaml
+            # @TODO: assuming all config files are yaml
             parameters = yaml.load(f)
         except IOError as e:
             haascli.error(str(e))
@@ -134,7 +137,6 @@ def create(ctx, stack_name, config_file, parameter):
         click.echo("StackId:", str(stack_id))
 
     except IOError as e:
-        # @TODO: needs better exception handling
         haascli.error(str(e))
         ctx.abort()
     except requests.exceptions.RequestException as e:
@@ -155,6 +157,8 @@ def create(ctx, stack_name, config_file, parameter):
 @click.option('-f', '--filter', multiple=True)
 @click.pass_context
 def list(ctx, long, filter):
+    '''lists stacks
+    '''
     if ctx.obj['debug']:
         click.echo('haas stack list long={} filter={}'.format(long, filter))
 
@@ -189,6 +193,8 @@ def list(ctx, long, filter):
 @click.argument('stack-name')
 @click.pass_context
 def delete(ctx, stack_name):
+    '''Delete stack with given name or stack id
+    '''
     if ctx.obj['debug']:
         click.echo('haas stack delete stack_name={}'.format(stack_name))
 
