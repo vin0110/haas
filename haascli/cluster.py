@@ -3,7 +3,6 @@ import boto3
 import executor
 from executor.ssh.client import RemoteCommand
 
-from haascli import stack
 
 
 class ClusterTopology(object):
