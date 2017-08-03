@@ -22,6 +22,11 @@ def cli(ctx, **kwargs):
     """This is a command line tool for HPCC-as-a-Service (HaaS)
     """
     ctx.obj = kwargs
+    ctx.cc = kwargs
+
+    if 'config_dir' not in ctx.obj:
+        os.mkdirs(ctx.obj['config_dir'])
+
 
 
 cli.add_command(haascli.config.cli, name='config')
