@@ -83,32 +83,30 @@ def create(ctx, stack_name, config_file, parameter):
             click.echo('parameter {} is {}'.format(k, v))
 
     stack_id = None
-    if execute:
-        try:
-            client = boto3.client('cloudformation')
-        except ClientError as e:
-            haascli.error(str(e))
-            ctx.abort()
 
     # prepare parameters for boto call
     parameter_list = []
     for param in parameters:
         parameter_list.append(dict(ParameterKey=param,
                                    ParameterValue=parameters[param]))
+    if debug:
+        msg = '\tStackName={}\n\tTemplateUrl={}\n'\
+              '\tParameters={}\n'\
+              '\tCapabilities=[\'CAPABILITY_IAM\']'\
+              .format(stack_name, template_url, parameter_list)
+        click.echo(msg)
+
     try:
+        client = ctx.obj['client']
         if template_url.startswith('http'):
             if 's3' in template_url:
-                if not execute:
-                    click.echo(click.style('not executing', fg='yellow'))
-                    response = {}
-                else:
-                    response = client.create_stack(
-                        StackName=stack_name,
-                        TemplateUrl=template_url,
-                        Parameters=parameter_list,
-                        Capabilities=['CAPABILITY_IAM'],
-                    )
-                    # so that we can have one clause for TemplateBody version
+                response = client.create_stack(
+                    StackName=stack_name,
+                    TemplateUrl=template_url,
+                    Parameters=parameter_list,
+                    Capabilities=['CAPABILITY_IAM'],
+                )
+                # so that we can have one clause for TemplateBody version
                 body = False
             else:
                 # fetch url contents
@@ -122,25 +120,16 @@ def create(ctx, stack_name, config_file, parameter):
             body = open(f, 'r').read()
 
         if body:
-            if not execute:
-                click.echo(click.style('not executing', fg='yellow'))
-                response = {}
-            else:
-                # if body is false create_stack was called above
-                response = client.create_stack(
-                    StackName=stack_name,
-                    TemplateBody=body,
-                    Parameters=parameter_list,
-                    Capabilities=['CAPABILITY_IAM'],
-                )
+            # if body is false create_stack was called above
+            response = client.create_stack(
+                StackName=stack_name,
+                TemplateBody=body,
+                Parameters=parameter_list,
+                Capabilities=['CAPABILITY_IAM'],
+            )
 
-        if debug:
-            msg = '\tStackName={}\n\tTemplateUrl={}\n'\
-                  '\tParameters={}\n'\
-                  '\tCapabilities=[\'CAPABILITY_IAM\']'\
-                  .format(stack_name, template_url, parameter_list)
-            click.echo(msg)
-
+        if haascli.bad_response(response):
+            ctx.abort()
         stack_id = response['StackId'] if 'StackId' in response else None
         click.echo("StackId:", str(stack_id))
 
@@ -154,6 +143,11 @@ def create(ctx, stack_name, config_file, parameter):
     except ClientError as e:
         haascli.error(str(e))
         ctx.abort()
+    except KeyError as e:
+        if e.args[0] == 'client':
+            haascli.warning('not executing')
+        else:
+            raise KeyError(e)
 
 
 @cli.command()
@@ -170,6 +164,8 @@ def list(ctx, long, filter):
             response = client.list_stacks(StackStatusFilter=filter)
         else:
             response = client.list_stacks()
+        if haascli.bad_response(response):
+            ctx.abort()
 
         for stack in response['StackSummaries']:
             print(stack['StackName'], 'status:', stack['StackStatus'])
@@ -196,17 +192,19 @@ def delete(ctx, stack_name):
     if ctx.obj['debug']:
         click.echo('haas stack delete stack_name={}'.format(stack_name))
 
-    if ctx.obj['exec']:
-        try:
-            client = boto3.client('cloudformation')
-            response = client.delete_stack(StackName=stack_name)
-            print(response)
-        except ClientError as e:
-            haascli.error(str(e))
+    try:
+        client = ctx.obj['client']
+        response = client.delete_stack(StackName=stack_name)
+        if haascli.bad_response(response):
             ctx.abort()
-    else:
-        click.echo(click.style('not executing', fg='yellow'))
-        return
+    except ClientError as e:
+        haascli.error(str(e))
+        ctx.abort()
+    except KeyError as e:
+        if e.args[0] == 'client':
+            haascli.warning('not executing')
+        else:
+            raise KeyError(e)
 
 
 @cli.command()

@@ -15,3 +15,12 @@ def error(*args):
 def warning(*args):
     msg = ' '.join(args)
     click.echo(click.style(msg, fg='yellow'))
+
+
+def bad_response(response):
+    '''Checks status code from boto response; return True if bad
+    '''
+    if response['ResponseMetadata']['HTTPStatusCode'] != 200:
+        haascli.error('status code',
+                      response['ResponseMetadata']['HTTPStatusCode'])
+        return True
