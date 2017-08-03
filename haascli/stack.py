@@ -117,10 +117,10 @@ def create(ctx, stack_name, config_file, parameter):
                 body = r.text
         else:
             if template_url.startswith('file:'):
-                f = template_url[5].strip('/')
+                fn = template_url[5:].strip('/')
             else:
-                f = template_url
-            body = open(f, 'r').read()
+                fn = template_url
+            body = open(fn, 'r').read()
 
         if body:
             # if body is false create_stack was called above

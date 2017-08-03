@@ -3,6 +3,7 @@ import boto3
 from haascli.haas import cli
 from click.testing import CliRunner
 from moto import mock_cloudformation
+from utils import create_stack
 
 
 class TestStack(unittest.TestCase):
@@ -18,17 +19,6 @@ class TestStack(unittest.TestCase):
         r = self.runner.invoke(cli, ['stack', '-j', 'list'])
         self.assertEqual(2, r.exit_code)
         self.assertTrue('no such option' in r.output)
-
-
-def create_stack(name, key, body, mclient):
-        parameters = dict(KeyName=key, )
-        parameter_list = [
-            dict(ParameterKey=param, ParameterValue=parameters[param])
-            for param, value in parameters.items()]
-        mclient.create_stack(StackName=name,
-                             TemplateBody=body,
-                             Parameters=parameter_list,
-                             Capabilities=['CAPABILITY_IAM'])
 
 
 class TestStackList(unittest.TestCase):
