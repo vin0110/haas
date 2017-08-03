@@ -7,15 +7,6 @@ import yaml
 import requests
 from botocore.exceptions import ClientError
 
-# constants
-PARAMETERS_IN_TEMPLATE = ['AvailabilityZone',
-                          'ClusterSize',
-                          'KeyName',
-                          'MasterInstanceType',
-                          'NumberOfSlavesPerNode',
-                          'SlaveInstanceType',
-                          'UserNameAndPassword', ]
-
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
 @click.option('-c', '--config', default='.')
@@ -34,7 +25,7 @@ def create(ctx, stack_name, config_file, parameter):
     debug = ctx.obj['debug']
     execute = ctx.obj['exec']
     if debug:
-        click.echo('create {} from its config'.format(stack_name))
+        click.echo('haas stack create stack_name={}'.format(stack_name))
         if not execute:
             click.echo(click.style('no exec mode', fg='yellow'))
 
@@ -75,19 +66,17 @@ def create(ctx, stack_name, config_file, parameter):
 
     stack_id = None
     if execute:
-        client = boto3.client('cloudformation')
+        try:
+            client = boto3.client('cloudformation')
+        except ClientError as e:
+            click.echo(click.style('ERROR(boto): ' + str(e), fg='red'))
+            ctx.abort()
 
     # prepare parameters for boto call
     parameter_list = []
     for param in parameters:
-        if param in PARAMETERS_IN_TEMPLATE:
-            parameter_list.append(dict(ParameterKey=param,
-                                       ParameterValue=parameters[param]))
-        else:
-            click.echo(
-                click.style('Unknown template parameter {}'.format(param),
-                            fg='red'))
-            ctx.abort()
+        parameter_list.append(dict(ParameterKey=param,
+                                   ParameterValue=parameters[param]))
     try:
         if template_url.startswith('http'):
             if 's3' in template_url:
@@ -161,26 +150,44 @@ def list(ctx, long, filter):
         click.echo(click.style('not executing', fg='yellow'))
         return
 
-    client = boto3.client('cloudformation')
-    if filter:
-        response = client.list_stacks(StackStatusFilter=filter)
-    else:
-        response = client.list_stacks()
+    try:
+        client = boto3.client('cloudformation')
+        if filter:
+            response = client.list_stacks(StackStatusFilter=filter)
+        else:
+            response = client.list_stacks()
 
-    for stack in response['StackSummaries']:
-        print(stack['StackName'], 'status:', stack['StackStatus'])
-        if long:
-            print('\tTemplate:', stack['TemplateDescription'])
-            print('\tId:', stack['StackId'])
-            print('\tCreated:', str(stack['CreationTime']))
-            if 'DeletionTime' in stack:
-                print('\tDeleted:', str(stack['DeletionTime']))
+        for stack in response['StackSummaries']:
+            print(stack['StackName'], 'status:', stack['StackStatus'])
+            if long:
+                print('\tTemplate:', stack['TemplateDescription'])
+                print('\tId:', stack['StackId'])
+                print('\tCreated:', str(stack['CreationTime']))
+                if 'DeletionTime' in stack:
+                    print('\tDeleted:', str(stack['DeletionTime']))
+    except ClientError as e:
+        click.echo(click.style('ERROR(boto): ' + str(e), fg='red'))
+        ctx.abort()
 
 
 @cli.command()
+@click.argument('stack-name')
 @click.pass_context
-def destroy(ctx):
-    pass
+def delete(ctx, stack_name):
+    if ctx.obj['debug']:
+        click.echo('haas stack delete stack_name={}'.format(stack_name))
+
+    if ctx.obj['exec']:
+        try:
+            client = boto3.client('cloudformation')
+            response = client.delete_stack(StackName=stack_name)
+            print(response)
+        except ClientError as e:
+            click.echo(click.style('ERROR(boto): ' + str(e), fg='red'))
+            ctx.abort()
+    else:
+        click.echo(click.style('not executing', fg='yellow'))
+        return
 
 
 @cli.command()
