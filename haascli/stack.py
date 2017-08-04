@@ -238,10 +238,10 @@ def events(ctx, stack_name):
 
         for events in events_iter:
             for event in events['StackEvents']:
-                print('%-20s %-40s %s' %
-                      (event['ResourceStatus'],
-                       event['ResourceType'],
-                       event['Timestamp'].strftime('%Y.%m.%d-%X')))
+                message('%-20s %-40s %s' %
+                        (event['ResourceStatus'],
+                         event['ResourceType'],
+                         event['Timestamp'].strftime('%Y.%m.%d-%X')))
     except ClientError as e:
         error(e.response['Error']['Message'])
         ctx.abort()
