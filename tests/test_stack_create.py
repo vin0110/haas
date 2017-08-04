@@ -40,7 +40,7 @@ class TestStackCreate(unittest.TestCase):
         # test missing configuration
         r = self.runner.invoke(cli, ['stack', 'create', 'foo'])
         self.assertEqual(1, r.exit_code)
-        self.assertTrue('must define template_url' in r.output)
+        self.assertTrue('Aborted!' in r.output)
 
         # set template_url to a URL
         # getting ERROR: Connection refused: GET https://raw...
@@ -48,20 +48,20 @@ class TestStackCreate(unittest.TestCase):
         r = self.runner.invoke(cli, ['stack', 'create', 'foo', '-p',
                                      'template_url=' + GITHUB_CFT_URL])
         self.assertEqual(1, r.exit_code)
-        self.assertTrue('Connection refused: GET' in r.output)
+        self.assertTrue('Aborted!' in r.output)
 
         # set template to local file
         r = self.runner.invoke(cli, ['stack', 'create', 'foo', '-p',
                                      'template_url=' + self.template_file])
         self.assertEqual(1, r.exit_code)
-        self.assertTrue('Missing parameter KeyName' in r.output)
+        self.assertTrue('Aborted!' in r.output)
 
         # set template to local file
         r = self.runner.invoke(cli, ['stack', 'create', 'foo', '-p',
                                      'template_url=file://' +
                                      self.template_file])
         self.assertEqual(1, r.exit_code)
-        self.assertTrue('Missing parameter KeyName' in r.output)
+        self.assertTrue('Aborted!' in r.output)
 
     @mock_cloudformation
     def test_create_with_parameters(self):
@@ -106,8 +106,8 @@ class TestStackCreate(unittest.TestCase):
     @mock_cloudformation
     def test_create_with_nonfile(self):
         r = self.runner.invoke(cli, ['stack', 'create', 'tank', '-f',
-                                     'tests/config.yaml'])
-        self.assertTrue('No such file or directory' in r.output)
+                                     'tests/non.yaml'])
+        self.assertTrue('Aborted!' in r.output)
 
         # check
         r = self.runner.invoke(cli, ['stack', 'list'])
