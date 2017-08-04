@@ -24,14 +24,17 @@ def warning(msg, *args, **kwargs):
 
 
 def debug(msg, *args, **kwargs):
-    msg_output = msg.format(*args, **kwargs)
-    logger.debug(msg_output)
+    if isinstance(msg, str):
+        msg_output = msg.format(*args, **kwargs)
+        logger.debug(msg_output)
+    else:
+        logger.debug(str(msg))
     # logger.debug(click.style(msg_output, fg='green'))
 
 
-def message(*args):
-    msg = ' '.join(args)
-    click.echo(msg)
+def message(msg, *args, **kwargs):
+    msg_output = msg.format(*args, **kwargs)
+    logger.info(msg_output)
 
 
 def bad_response(response):
