@@ -222,6 +222,49 @@ def delete(ctx, stack_name):
 
 
 @cli.command()
+@click.argument('stack-name')
+@click.pass_context
+def events(ctx, stack_name):
+    '''Display events for a stack
+    Events might be delivered in more than one message
+    '''
+    if ctx.obj['debug']:
+        message('haas stack delete stack_name={}'.format(stack_name))
+
+    try:
+        client = ctx.obj['client']
+    except ClientError as e:
+        error(str(e))
+        ctx.abort()
+    except KeyError as e:
+        if e.args[0] == 'client':
+            warning('not executing')
+            return
+        else:
+            raise KeyError(e)
+
+    next = True
+    while next:
+        try:
+            response = client.describe_stack_events(StackName=stack_name)
+            if bad_response(response):
+                ctx.abort()
+        except ClientError as e:
+            error(str(e))
+            ctx.abort()
+
+        next = True if 'NextToken' in response['ResponseMetadata'] else False
+        events = response['StackEvents']
+        print('Events for stack', events[0]['StackName'])
+        print('  StackId:', events[0]['StackId'])
+        for event in events:
+            print('%-20s %-40s %s' %
+                  (event['ResourceStatus'],
+                   event['ResourceType'],
+                   event['Timestamp'].strftime('%Y.%m.%d-%X')))
+
+
+@cli.command()
 @click.pass_context
 def update(ctx):
     pass
