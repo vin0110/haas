@@ -151,7 +151,7 @@ def create(ctx, stack_name, config_file, parameter):
         error(str(e))
         ctx.abort()
     except ClientError as e:
-        error(str(e))
+        error(e.response['Error']['Message'])
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
@@ -188,7 +188,7 @@ def list(ctx, long, filter):
                 if 'DeletionTime' in stack:
                     print('\tDeleted:', str(stack['DeletionTime']))
     except ClientError as e:
-        error(str(e))
+        error(e.response['Error']['Message'])
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
@@ -212,7 +212,7 @@ def delete(ctx, stack_name):
         if bad_response(response):
             ctx.abort()
     except ClientError as e:
-        error(str(e))
+        error(e.response['Error']['Message'])
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
@@ -233,8 +233,17 @@ def events(ctx, stack_name):
 
     try:
         client = ctx.obj['client']
+        paginator = client.get_paginator('describe_stack_events')
+        events_iter = paginator.paginate(StackName=stack_name)
+
+        for events in events_iter:
+            for event in events['StackEvents']:
+                print('%-20s %-40s %s' %
+                      (event['ResourceStatus'],
+                       event['ResourceType'],
+                       event['Timestamp'].strftime('%Y.%m.%d-%X')))
     except ClientError as e:
-        error(str(e))
+        error(e.response['Error']['Message'])
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
@@ -242,26 +251,6 @@ def events(ctx, stack_name):
             return
         else:
             raise KeyError(e)
-
-    next = True
-    while next:
-        try:
-            response = client.describe_stack_events(StackName=stack_name)
-            if bad_response(response):
-                ctx.abort()
-        except ClientError as e:
-            error(str(e))
-            ctx.abort()
-
-        next = True if 'NextToken' in response['ResponseMetadata'] else False
-        events = response['StackEvents']
-        print('Events for stack', events[0]['StackName'])
-        print('  StackId:', events[0]['StackId'])
-        for event in events:
-            print('%-20s %-40s %s' %
-                  (event['ResourceStatus'],
-                   event['ResourceType'],
-                   event['Timestamp'].strftime('%Y.%m.%d-%X')))
 
 
 @cli.command()
