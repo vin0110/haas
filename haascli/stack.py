@@ -151,7 +151,7 @@ def create(ctx, stack_name, config_file, parameter):
         error(str(e))
         ctx.abort()
     except ClientError as e:
-        error(str(e))
+        error(e.response['Error']['Message'])
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
@@ -188,7 +188,7 @@ def list(ctx, long, filter):
                 if 'DeletionTime' in stack:
                     print('\tDeleted:', str(stack['DeletionTime']))
     except ClientError as e:
-        error(str(e))
+        error(e.response['Error']['Message'])
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
@@ -212,11 +212,43 @@ def delete(ctx, stack_name):
         if bad_response(response):
             ctx.abort()
     except ClientError as e:
-        error(str(e))
+        error(e.response['Error']['Message'])
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
             warning('not executing')
+        else:
+            raise KeyError(e)
+
+
+@cli.command()
+@click.argument('stack-name')
+@click.pass_context
+def events(ctx, stack_name):
+    '''Display events for a stack
+    Events might be delivered in more than one message
+    '''
+    if ctx.obj['debug']:
+        message('haas stack delete stack_name={}'.format(stack_name))
+
+    try:
+        client = ctx.obj['client']
+        paginator = client.get_paginator('describe_stack_events')
+        events_iter = paginator.paginate(StackName=stack_name)
+
+        for events in events_iter:
+            for event in events['StackEvents']:
+                message('%-20s %-40s %s' %
+                        (event['ResourceStatus'],
+                         event['ResourceType'],
+                         event['Timestamp'].strftime('%Y.%m.%d-%X')))
+    except ClientError as e:
+        error(e.response['Error']['Message'])
+        ctx.abort()
+    except KeyError as e:
+        if e.args[0] == 'client':
+            warning('not executing')
+            return
         else:
             raise KeyError(e)
 
