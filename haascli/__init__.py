@@ -33,8 +33,14 @@ def debug(msg, *args, **kwargs):
 
 
 def message(msg, *args, **kwargs):
-    msg_output = msg.format(*args, **kwargs)
-    logger.info(msg_output)
+    if isinstance(msg, str):
+        if (len(args) > 0) or (len(kwargs) > 0):
+            msg_output = msg.format(*args, **kwargs)
+            logger.info(msg_output)
+        else:
+            logger.info(msg)
+    else:
+        logger.info(str(msg))
 
 
 def bad_response(response):

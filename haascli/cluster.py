@@ -37,13 +37,22 @@ class ClusterTopology(object):
             # not sure any issue in this way
             master_ip = ec2_instance_list['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]['Association']['PublicIp']
 
-        return ClusterTopology(master_ip)
+        # get cluster topology from the service node
+        cmd = RemoteCommand(master_ip, "cat ~/project-aws/.cluster_conf", capture=True)
+        cmd.start()
+        slave_ips = cmd.output.rstrip().splitlines()[1:]
 
-    def __init__(self, master_ip):
+        return ClusterTopology(master_ip, slave_ips)
+
+    def __init__(self, master_ip, slave_ips):
         self.master_ip = master_ip
+        self.slave_ips = slave_ips
 
     def get_master_ip(self):
         return self.master_ip
+
+    def get_slave_ips(self):
+        return self.slave_ips
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
@@ -80,5 +89,6 @@ def restart(ctx):
 @cli.command()
 @click.pass_context
 def status(ctx):
+    print(ctx.obj)
     topology = ClusterTopology.parse(ctx.obj['stack_name'])
     RemoteCommand(topology.get_master_ip(), 'source ~/project-aws/init.sh; cd ~/project-aws; hpcc service --action status').start()
