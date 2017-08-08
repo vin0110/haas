@@ -80,6 +80,5 @@ def restart(ctx):
 @cli.command()
 @click.pass_context
 def status(ctx):
-    print(ctx.obj)
     topology = ClusterTopology.parse(ctx.obj['stack_name'])
     RemoteCommand(topology.get_master_ip(), 'source ~/project-aws/init.sh; cd ~/project-aws; hpcc service --action status').start()
