@@ -37,22 +37,13 @@ class ClusterTopology(object):
             # not sure any issue in this way
             master_ip = ec2_instance_list['Reservations'][0]['Instances'][0]['NetworkInterfaces'][0]['Association']['PublicIp']
 
-        # get cluster topology from the service node
-        cmd = RemoteCommand(master_ip, "cat ~/project-aws/.cluster_conf", capture=True)
-        cmd.start()
-        slave_ips = cmd.output.rstrip().splitlines()[1:]
+        return ClusterTopology(master_ip)
 
-        return ClusterTopology(master_ip, slave_ips)
-
-    def __init__(self, master_ip, slave_ips):
+    def __init__(self, master_ip):
         self.master_ip = master_ip
-        self.slave_ips = slave_ips
 
     def get_master_ip(self):
         return self.master_ip
-
-    def get_slave_ips(self):
-        return self.slave_ips
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
