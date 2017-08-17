@@ -61,24 +61,51 @@ def start(ctx):
     # @TODO: a cache mechanism would be better
     topology = ClusterTopology.parse(ctx.obj['stack_name'])
     # @TODO: after we finalize the AMI, we don't need to switch to the user's directory
-    RemoteCommand(topology.get_master_ip(), 'source ~/project-aws/init.sh; cd ~/project-aws; hpcc service --action start').start()
-
+    RemoteCommand(
+        topology.get_master_ip(),
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv start"'
+    ).start()
+    RemoteCommand(
+        topology.get_master_ip(),
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init start"'
+    ).start()
 
 @cli.command()
 @click.pass_context
 def stop(ctx):
     topology = ClusterTopology.parse(ctx.obj['stack_name'])
-    RemoteCommand(topology.get_master_ip(), 'source ~/project-aws/init.sh; cd ~/project-aws; hpcc service --action stop').start()
+    RemoteCommand(
+        topology.get_master_ip(),
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv stop"'
+    ).start()
+    RemoteCommand(
+        topology.get_master_ip(),
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init stop"'
+    ).start()
 
 
 @cli.command()
 @click.pass_context
 def restart(ctx):
-    ctx.invoke(stop)
-    ctx.invoke(start)
+    topology = ClusterTopology.parse(ctx.obj['stack_name'])
+    RemoteCommand(
+        topology.get_master_ip(),
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv restart"'
+    ).start()
+    RemoteCommand(
+        topology.get_master_ip(),
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init restart"'
+    ).start()
 
 @cli.command()
 @click.pass_context
 def status(ctx):
     topology = ClusterTopology.parse(ctx.obj['stack_name'])
-    RemoteCommand(topology.get_master_ip(), 'source ~/project-aws/init.sh; cd ~/project-aws; hpcc service --action status').start()
+    RemoteCommand(
+        topology.get_master_ip(),
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv status"'
+    ).start()
+    RemoteCommand(
+        topology.get_master_ip(),
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init status"'
+    ).start()
