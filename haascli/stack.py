@@ -40,8 +40,9 @@ def cli(ctx, **kwargs):
 @click.argument('stack_name')
 @click.option('-f', '--config_file')
 @click.option('-p', '--parameter', multiple=True)
+@click.option('--wait/--no-wait', default=False)
 @click.pass_context
-def create(ctx, stack_name, config_file, parameter):
+def create(ctx, stack_name, config_file, parameter, wait):
     '''Creates an AWS stack
     '''
     debug = ctx.obj['debug']
@@ -144,6 +145,10 @@ def create(ctx, stack_name, config_file, parameter):
         stack_id = response['StackId'] if 'StackId' in response else None
         message("StackId:", str(stack_id))
 
+        if wait:
+            waiter = client.get_waiter('stack_create_complete')
+            waiter.wait(StackName=stack_name)
+
     except IOError as e:
         error(str(e))
         ctx.abort()
@@ -199,8 +204,9 @@ def list(ctx, long, filter):
 
 @cli.command()
 @click.argument('stack-name')
+@click.option('--wait/--no-wait', default=False)
 @click.pass_context
-def delete(ctx, stack_name):
+def delete(ctx, stack_name, wait):
     '''Delete stack with given name or stack id
     '''
     if ctx.obj['debug']:
@@ -209,6 +215,10 @@ def delete(ctx, stack_name):
     try:
         client = ctx.obj['client']
         response = client.delete_stack(StackName=stack_name)
+        if wait:
+            waiter = client.get_waiter('stack_delete_complete')
+            waiter.wait(StackName=stack_name)
+
         if bad_response(response):
             ctx.abort()
     except ClientError as e:
