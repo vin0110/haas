@@ -141,7 +141,7 @@ def create(ctx, stack_name, config_file, parameter, wait):
         if bad_response(response):
             ctx.abort()
         stack_id = response['StackId'] if 'StackId' in response else None
-        print("StackId:", str(stack_id))
+        logger.info("StackId: {}".format(str(stack_id)))
 
         if wait:
             waiter = client.get_waiter('stack_create_complete')
@@ -182,13 +182,13 @@ def list(ctx, long, filter):
             ctx.abort()
 
         for stack in response['StackSummaries']:
-            print(stack['StackName'], 'status:', stack['StackStatus'])
+            logger.info("{} status: {}".format(stack['StackName'], stack['StackStatus']))
             if long:
-                print('\tTemplate:', stack['TemplateDescription'])
-                print('\tId:', stack['StackId'])
-                print('\tCreated:', str(stack['CreationTime']))
+                logger.info('\tTemplate: {}'.format(stack['TemplateDescription']))
+                logger.info('\tId: {}'.format(stack['StackId']))
+                logger.info('\tCreated: {}'.format(str(stack['CreationTime'])))
                 if 'DeletionTime' in stack:
-                    print('\tDeleted:', str(stack['DeletionTime']))
+                    logger.info('\tDeleted: {}'.format(str(stack['DeletionTime'])))
     except ClientError as e:
         logger.error(e.response['Error']['Message'])
         ctx.abort()
@@ -243,7 +243,7 @@ def events(ctx, stack_name):
 
         for events in events_iter:
             for event in events['StackEvents']:
-                print('%-20s %-40s %s' %
+                logger.info('%-20s %-40s %s' %
                       (event['ResourceStatus'],
                        event['ResourceType'],
                        event['Timestamp'].strftime('%Y.%m.%d-%X')))

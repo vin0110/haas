@@ -2,6 +2,7 @@ import os
 import logging
 import enum
 import contextlib
+import json
 
 import click
 import executor
@@ -27,16 +28,16 @@ class HaasConfigurationKey(enum.Enum):
 class HaaSConfiguration(object):
     @staticmethod
     def load(config_path):
-        print("Loading config from {}", config_path)
+        logger.debug("Loading config from {}".format(config_path))
         with open(config_path, 'r') as f:
             config_raw = yaml.load(f)
             config = {HaasConfigurationKey[k.upper()]: v for k, v in config_raw.items()}
-            print(config)
+            logger.debug(config)
             return HaaSConfiguration(config)
 
     @staticmethod
     def dump(config, config_path):
-        print("Writing config to {}", config_path)
+        logger.debug("Writing config to {}", config_path)
         with open(config_path, 'w') as f:
             config_raw = {k.value: v for k, v in config.config.items()}
             yaml.dump(config_raw, f, default_flow_style=False)
@@ -49,7 +50,7 @@ class HaaSConfiguration(object):
 
     def get(self, key, value=None):
         if not isinstance(key, HaasConfigurationKey):
-            raise Exception("The key must be an instabnce of {}".format(type(HaasConfigurationKey)))
+            raise Exception("The key must be an instance of {}".format(type(HaasConfigurationKey)))
         return self.config[key]
 
 
@@ -60,13 +61,13 @@ class HaasConfigurationManager(metaclass=Singleton):
         self.config_db = {}
         self._init_dir()
 
-        print("haas dir: {}", self.haas_dir)
-        print("haas config dir: {}", self.config_db_dir)
+        logger.debug("haas dir: {}".format(self.haas_dir))
+        logger.debug("haas config dir: {}".format(self.config_db_dir))
 
         self.reload()
 
     def _init_dir(self):
-        logger.debug("Creating config dir {}", self.config_db_dir)
+        logger.debug("Creating config dir {}".format(self.config_db_dir))
         os.makedirs(self.config_db_dir, exist_ok=True)
 
     def get_config_path(self, config_name):
@@ -75,7 +76,7 @@ class HaasConfigurationManager(metaclass=Singleton):
     def add(self, config_name, config_item):
         if not isinstance(config_item, HaaSConfiguration):
             raise Exception("Incompatible class type {} with {}".format(type(config_item)), type(HaaSConfiguration))
-        print("##############")
+
         config_path = self.get_config_path(config_name)
         config_item.to_file(config_path)
         self.config_db[config_name] = config_item
@@ -86,8 +87,8 @@ class HaasConfigurationManager(metaclass=Singleton):
         self.config_db.pop(config_name, None)
 
     def exists(self, config_name):
-        print("config name: {}", config_name)
-        print("config path: {}", self.get_config_path(config_name))
+        logger.debug("config name: {}", config_name)
+        logger.debug("config path: {}", self.get_config_path(config_name))
         return config_name in self.config_db and os.path.exists(self.get_config_path(config_name))
 
     def reload(self):
@@ -97,7 +98,7 @@ class HaasConfigurationManager(metaclass=Singleton):
             config_name = os.path.splitext(os.path.basename(config_file))[0]
             config_path = os.path.join(self.config_db_dir, config_file)
             self.config_db[config_name] = HaaSConfiguration.load(config_path)
-        print(self.config_db)
+        logger.debug(self.config_db)
 
     def list(self):
         return self.config_db
