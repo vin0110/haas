@@ -1,8 +1,10 @@
+import logging
 import click
 from executor.ssh.client import RemoteCommand
 
 from haascli.cluster import ClusterTopology
-from haascli import debug, message
+
+logger = logging.getLogger(__name__)
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
@@ -19,7 +21,7 @@ def cli(ctx, **kwargs):
 def save(ctx, stack_name):
     topology = ClusterTopology.parse(stack_name)
     s3_bucket = "osr-{}".format(stack_name)
-    message("S3 bucket: {}", s3_bucket)
+    logger.info("S3 bucket: {}", s3_bucket)
 
     RemoteCommand(topology.get_master_ip(),
                   'source ~/project-aws/init.sh; cd ~/project-aws; '
@@ -33,7 +35,7 @@ def save(ctx, stack_name):
 def restore(ctx, stack_from, stack_to):
     topology = ClusterTopology.parse(stack_to)
     s3_bucket = "osr-{}".format(stack_from)
-    message("S3 bucket: {}", s3_bucket)
+    logger.info("S3 bucket: {}", s3_bucket)
 
     RemoteCommand(topology.get_master_ip(),
                   'source ~/project-aws/init.sh; cd ~/project-aws; '
