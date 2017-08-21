@@ -26,8 +26,8 @@ def cli(ctx, **kwargs):
         optargs['aws_access_key_id'] = ctx.obj['key']
     if ctx.obj['secret']:
         optargs['aws_secret_access_key_id'] = ctx.obj['secret']
-    logger.debug('aws settings:\n',
-                 '\n'.join(['{}={}'.format(k, v) for k, v in optargs.items()]))
+    logger.debug('aws settings:\n{}'.format(
+                 '\n'.join(['{}={}'.format(k, v) for k, v in optargs.items()])))
 
     # open the client here instead of in all commands
     if ctx.obj['exec']:
