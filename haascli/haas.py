@@ -19,6 +19,11 @@ from haascli import data as haascli_data
               type=click.Path(exists=True, resolve_path=True),
               default=lambda: os.path.join(os.path.expanduser('~'), '.haas'),
               help="The haas configuration directory")
+@click.option('--log/--no-log', default=False)
+@click.option('-L', '--log-file',
+              default=haascli.DEFAULT_LOG,
+              help='set log file; default "{}"; "-" for stdout'
+              .format(haascli.DEFAULT_LOG))
 @click.option('-r', '--region', help='AWS region name')
 @click.option('-k', '--key', help='AWS key')
 @click.option('-s', '--secret', help='AWS secret key')
@@ -28,7 +33,9 @@ def cli(ctx, **kwargs):
     """
     ctx.obj = kwargs
 
-    haascli.setup_logging(level=logging.DEBUG if kwargs['debug'] else logging.INFO)
+    haascli.setup_logging(
+        level=logging.DEBUG if kwargs['debug'] else logging.INFO,
+        file=kwargs['log_file'] if kwargs['log'] else None)
 
 
 cli.add_command(haascli_config.cli, name='config')
