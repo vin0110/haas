@@ -26,8 +26,8 @@ def cli(ctx, **kwargs):
         optargs['aws_access_key_id'] = ctx.obj['key']
     if ctx.obj['secret']:
         optargs['aws_secret_access_key_id'] = ctx.obj['secret']
-    logger.debug('aws settings:\n',
-                 '\n'.join(['{}={}'.format(k, v) for k, v in optargs.items()]))
+    logger.debug('aws settings:\n{}'.format(
+                 '\n'.join(['{}={}'.format(k, v) for k, v in optargs.items()])))
 
     # open the client here instead of in all commands
     if ctx.obj['exec']:
@@ -234,7 +234,7 @@ def events(ctx, stack_name):
     '''Display events for a stack
     Events might be delivered in more than one message
     '''
-    logger.debug('haas stack delete stack_name={}'.format(stack_name))
+    logger.debug('haas stack events stack_name={}'.format(stack_name))
 
     try:
         client = ctx.obj['client']
@@ -248,7 +248,7 @@ def events(ctx, stack_name):
                        event['ResourceType'],
                        event['Timestamp'].strftime('%Y.%m.%d-%X')))
     except ClientError as e:
-        logger.error(e.response['Error']['Messagen'])
+        logger.error(e.response['Error']['Message'])
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':

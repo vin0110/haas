@@ -23,7 +23,7 @@ def bad_response(response):
 def setup_logging(level=logging.INFO, file=None):
     '''create file hamdler'''
 
-    coloredlogs.install(level=level, fmt='%(message)s', logger=logging.getLogger())
+    coloredlogs.install(level=level, fmt='%(message)s', logger=logging.getLogger("haascli"))
 
     if file is not None:
         file_handler = logging.FileHandler(file)
@@ -31,4 +31,4 @@ def setup_logging(level=logging.INFO, file=None):
         file_fmt = '%(asctime)s:%(name)s:%(levelname)s:%(message)s'
         file_formatter = logging.Formatter(file_fmt)
         file_handler.setFormatter(file_formatter)
-        logging.getLogger().addHandler(file_handler)
+        logging.getLogger("haascli").addHandler(file_handler)
