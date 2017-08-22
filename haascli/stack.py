@@ -1,4 +1,5 @@
 import os
+import logging
 
 import click
 import boto3
@@ -6,7 +7,9 @@ import yaml
 import requests
 from botocore.exceptions import ClientError, PartialCredentialsError
 
-from haascli import error, warning, message, bad_response
+from haascli import bad_response
+
+logger = logging.getLogger(__name__)
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
@@ -23,16 +26,15 @@ def cli(ctx, **kwargs):
         optargs['aws_access_key_id'] = ctx.obj['key']
     if ctx.obj['secret']:
         optargs['aws_secret_access_key_id'] = ctx.obj['secret']
-    if ctx.obj['debug']:
-        print('aws settings:\n',
-              '\n'.join(['{}={}'.format(k, v) for k, v in optargs.items()]))
+    logger.debug('aws settings:\n{}'.format(
+                 '\n'.join(['{}={}'.format(k, v) for k, v in optargs.items()])))
 
     # open the client here instead of in all commands
     if ctx.obj['exec']:
         try:
             ctx.obj['client'] = boto3.client('cloudformation', **optargs)
         except (ClientError, PartialCredentialsError) as e:
-            error(str(e))
+            logger.error(str(e))
             ctx.abort()
 
 
@@ -45,11 +47,9 @@ def cli(ctx, **kwargs):
 def create(ctx, stack_name, config_file, parameter, wait):
     '''Creates an AWS stack
     '''
-    debug = ctx.obj['debug']
-    if debug:
-        message('haas stack create stack_name={}'.format(stack_name))
-        if not ctx.obj['exec']:
-            warning('no exec mode')
+    logger.debug('haas stack create stack_name={}'.format(stack_name))
+    if not ctx.obj['exec']:
+        logger.warning('no exec mode')
 
     parameters = {}
     if config_file:
@@ -59,7 +59,7 @@ def create(ctx, stack_name, config_file, parameter, wait):
             # @TODO: assuming all config files are yaml
             parameters = yaml.load(f)
         except IOError as e:
-            error(str(e))
+            logger.error(str(e))
             ctx.abort()
     else:
         for param in parameter:
@@ -68,7 +68,7 @@ def create(ctx, stack_name, config_file, parameter, wait):
             except IndexError:
                 val = True
             if key in parameters:
-                warning('overwriting {} to {} was {}'.format(
+                logger.warning('overwriting {} to {} was {}'.format(
                     key, val, parameters[key]))
             parameters[key] = val
 
@@ -77,14 +77,14 @@ def create(ctx, stack_name, config_file, parameter, wait):
         template_url = parameters['template_url']
         del parameters['template_url']
     except KeyError as e:
-        error('must define template_url')
+        logger.error('must define template_url')
         ctx.abort()
 
-    if debug:
-        message('template url is {}'.format(template_url))
+    if ctx.obj['debug']:
+        logger.debug('template url is {}'.format(template_url))
 
         for k, v in parameters.items():
-            message('parameter {} is {}'.format(k, v))
+            logger.debug('parameter {} is {}'.format(k, v))
 
     stack_id = None
 
@@ -93,12 +93,10 @@ def create(ctx, stack_name, config_file, parameter, wait):
     for param in parameters:
         parameter_list.append(dict(ParameterKey=param,
                                    ParameterValue=parameters[param]))
-    if debug:
-        msg = '\tStackName={}\n\tTemplateUrl={}\n'\
-              '\tParameters={}\n'\
-              '\tCapabilities=[\'CAPABILITY_IAM\']'\
-              .format(stack_name, template_url, parameter_list)
-        message(msg)
+    logger.debug('\tStackName={}\n\tTemplateUrl={}\n'
+                 '\tParameters={}\n'
+                 '\tCapabilities=[\'CAPABILITY_IAM\']'
+                 .format(stack_name, template_url, parameter_list))
 
     try:
         client = ctx.obj['client']
@@ -143,24 +141,24 @@ def create(ctx, stack_name, config_file, parameter, wait):
         if bad_response(response):
             ctx.abort()
         stack_id = response['StackId'] if 'StackId' in response else None
-        message("StackId:", str(stack_id))
+        print("StackId:", str(stack_id))
 
         if wait:
             waiter = client.get_waiter('stack_create_complete')
             waiter.wait(StackName=stack_name)
 
     except IOError as e:
-        error(str(e))
+        logger.error(str(e))
         ctx.abort()
     except requests.exceptions.RequestException as e:
-        error(str(e))
+        logger.error(str(e))
         ctx.abort()
     except ClientError as e:
-        error(e.response['Error']['Message'])
+        logger.error(e.response['Error']['Message'])
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
-            warning('not executing')
+            logger.warning('not executing')
         else:
             raise KeyError(e)
 
@@ -172,8 +170,7 @@ def create(ctx, stack_name, config_file, parameter, wait):
 def list(ctx, long, filter):
     '''lists stacks
     '''
-    if ctx.obj['debug']:
-        message('haas stack list long={} filter={}'.format(long, filter))
+    logger.debug('haas stack list long={} filter={}'.format(long, filter))
 
     try:
         client = ctx.obj['client']
@@ -193,11 +190,11 @@ def list(ctx, long, filter):
                 if 'DeletionTime' in stack:
                     print('\tDeleted:', str(stack['DeletionTime']))
     except ClientError as e:
-        error(e.response['Error']['Message'])
+        logger.error(e.response['Error']['Message'])
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
-            warning('not executing')
+            logger.warning('not executing')
         else:
             raise KeyError(e)
 
@@ -209,8 +206,7 @@ def list(ctx, long, filter):
 def delete(ctx, stack_name, wait):
     '''Delete stack with given name or stack id
     '''
-    if ctx.obj['debug']:
-        message('haas stack delete stack_name={}'.format(stack_name))
+    logger.debug('haas stack delete stack_name={}'.format(stack_name))
 
     try:
         client = ctx.obj['client']
@@ -222,11 +218,11 @@ def delete(ctx, stack_name, wait):
         if bad_response(response):
             ctx.abort()
     except ClientError as e:
-        error(e.response['Error']['Message'])
+        logger.error(e.response['Error']['Message'])
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
-            warning('not executing')
+            logger.warning('not executing')
         else:
             raise KeyError(e)
 
@@ -238,8 +234,7 @@ def events(ctx, stack_name):
     '''Display events for a stack
     Events might be delivered in more than one message
     '''
-    if ctx.obj['debug']:
-        message('haas stack delete stack_name={}'.format(stack_name))
+    logger.debug('haas stack delete stack_name={}'.format(stack_name))
 
     try:
         client = ctx.obj['client']
@@ -248,16 +243,16 @@ def events(ctx, stack_name):
 
         for events in events_iter:
             for event in events['StackEvents']:
-                message('%-20s %-40s %s' %
-                        (event['ResourceStatus'],
-                         event['ResourceType'],
-                         event['Timestamp'].strftime('%Y.%m.%d-%X')))
+                print('%-20s %-40s %s' %
+                      (event['ResourceStatus'],
+                       event['ResourceType'],
+                       event['Timestamp'].strftime('%Y.%m.%d-%X')))
     except ClientError as e:
-        error(e.response['Error']['Message'])
+        logger.error(e.response['Error']['Message'])
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
-            warning('not executing')
+            logger.warning('not executing')
             return
         else:
             raise KeyError(e)
