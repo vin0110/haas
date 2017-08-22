@@ -248,7 +248,7 @@ def events(ctx, stack_name):
                        event['ResourceType'],
                        event['Timestamp'].strftime('%Y.%m.%d-%X')))
     except ClientError as e:
-        logger.error(e.response['Error']['Messagen'])
+        logger.error(e.response['Error']['Message'])
         ctx.abort()
     except KeyError as e:
         if e.args[0] == 'client':
