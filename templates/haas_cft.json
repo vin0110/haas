@@ -361,6 +361,12 @@
                     }
                 ]
             },
+            "CreationPolicy": {
+                "ResourceSignal": {
+                  "Count": "1",
+                  "Timeout": "PT5M"
+                }
+            },
             "Type": "AWS::AutoScaling::AutoScalingGroup"
         },
         "MasterLaunchCfg": {
@@ -397,21 +403,7 @@
                                 "#!/bin/bash",
                                 "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1",
                                 "echo [Initialization] starting the master node",
-                                {
-                                    "Fn::Join": [
-                                        " ",
-                                        [
-                                            "su - osr /bin/bash -c 'cd /home/osr/project-aws; git pull; /bin/bash scripts/auto_hpcc.sh",
-                                            {
-                                                "Ref": "AWS::StackName"
-                                            },
-                                            {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            "'"
-                                        ]
-                                    ]
-                                },
+                                "su - osr /bin/bash -c 'wget https://raw.githubusercontent.com/vin0110/haas/master/scripts/auto_hpcc.sh -O /tmp/auto_hpcc.sh; bash /tmp/auto_hpcc.sh'",
                                 "echo [Initialization] completed the master node",
                                 "echo SCRIPT: 'Signal stack that setup of HPCC System is complete.'",
                                 {
@@ -535,6 +527,12 @@
                     }
                 ]
             },
+            "CreationPolicy": {
+                "ResourceSignal": {
+                  "Count": {"Ref": "ClusterSize"},
+                  "Timeout": "PT5M"
+                }
+            },
             "Type": "AWS::AutoScaling::AutoScalingGroup"
         },
         "SlaveLaunchCfg": {
@@ -571,21 +569,7 @@
                                 "#!/bin/bash",
                                 "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1",
                                 "echo [Initialization] starting the slave node",
-                                {
-                                    "Fn::Join": [
-                                        " ",
-                                        [
-                                            "su - osr /bin/bash -c 'cd /home/osr/project-aws; git pull; /bin/bash scripts/auto_hpcc.sh",
-                                            {
-                                                "Ref": "AWS::StackName"
-                                            },
-                                            {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            "'"
-                                        ]
-                                    ]
-                                },
+                                "su - osr /bin/bash -c 'wget https://raw.githubusercontent.com/vin0110/haas/master/scripts/auto_hpcc.sh -O /tmp/auto_hpcc.sh; bash /tmp/auto_hpcc.sh'",
                                 "echo [Initialization] completed the slave node",
                                 "echo SCRIPT: 'Signal stack that setup of HPCC System is complete.'",
                                 {
