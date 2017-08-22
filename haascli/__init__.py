@@ -11,6 +11,15 @@ DEFAULT_LOG = '/tmp/haas.log'
 
 logger = logging.getLogger(__name__)
 
+# create console handler for error
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.ERROR)
+console_fmt = '%(name)s:%(levelname)s:%(message)s'
+console_formatter = logging.Formatter(console_fmt)
+console_handler.setFormatter(console_formatter)
+logger.addHandler(console_handler)
+coloredlogs.install(level=logging.ERROR, logger=logger)
+
 
 def bad_response(response):
     '''Checks status code from boto response; return True if bad
@@ -25,13 +34,7 @@ def setup_logging(level=logging.INFO, file=DEFAULT_LOG):
     '''create file hamdler'''
     logger.setLevel(level)
     if file == '-':
-        # create console handler for error
-        console_handler = logging.StreamHandler()
         console_handler.setLevel(level)
-        console_fmt = '%(name)s:%(levelname)s:%(message)s'
-        console_formatter = logging.Formatter(console_fmt)
-        console_handler.setFormatter(console_formatter)
-        logger.addHandler(console_handler)
         coloredlogs.install(level=level, logger=logger)
     else:
         if file:
