@@ -5,6 +5,7 @@ from haascli.haas import cli
 from click.testing import CliRunner
 from moto import mock_cloudformation
 from haascli import ROOT_DIR
+from haascli import logger, console_handler
 
 
 GITHUB_CFT_URL = 'https://raw.githubusercontent.com/vin0110/haas/master/'\
@@ -26,6 +27,9 @@ class TestStackCreate(unittest.TestCase):
         f = open(os.path.join(self.template_file), 'r')
         self.template_body = f.read()
         f.close()
+
+        # disable error logging during testing
+        logger.removeHandler(console_handler)
 
     def tearDown(self):
         pass
