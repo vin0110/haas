@@ -35,7 +35,7 @@ def cli(ctx, **kwargs):
         try:
             ctx.obj['client'] = boto3.client('cloudformation', **optargs)
         except (ClientError, PartialCredentialsError) as e:
-            logger.error(str(e))
+            logger.error('AWS Credentials: ' + str(e))
             ctx.abort()
 
 
@@ -60,7 +60,9 @@ def create(ctx, stack_name, config_file, parameter, wait):
             # @TODO: assuming all config files are yaml
             parameters = yaml.load(f)
         except IOError as e:
-            logger.error(str(e))
+            print(click.style(
+                'ERROR: Could not open config file: {}', fg='red')
+                .format(str(e)))
             ctx.abort()
     else:
         for param in parameter:
@@ -78,7 +80,7 @@ def create(ctx, stack_name, config_file, parameter, wait):
         template_url = parameters['template_url']
         del parameters['template_url']
     except KeyError as e:
-        logger.error('must define template_url')
+        print(click.style('ERROR: Must define template_url', fg='red'))
         ctx.abort()
 
     if ctx.obj['debug']:
