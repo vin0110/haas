@@ -111,7 +111,7 @@ def generate_hash(data, prefix='-'):
 
 @click.group()
 @click.option('--name', default='mycheckpoint', help='The checkpoint name')
-@click.option('--s3_bucket', default='hpcc_checkpoint')
+@click.option('--bucket', default='hpcc_checkpoint')
 @click.option('--user', default='hpcc')
 @click.pass_context
 def cli(ctx, **kwargs):
@@ -125,7 +125,7 @@ def cli(ctx, **kwargs):
     execute("mkdir -p {}".format(ctx.obj['tmp_dir']))
 
     # @TODO: should we initialize first?
-    execute("aws s3 mb s3://{}".format(ctx.obj['s3_bucket']), silent=True)
+    execute("aws s3 mb s3://{}".format(ctx.obj['bucket']), silent=True)
 
 
 @cli.command()
@@ -154,9 +154,9 @@ def workunit(ctx, op):
                 daliserver_ip, wu, workspace_dir)
             )
         execute("tar zcvf {} -C {} .".format(output_path, workspace_dir))
-        execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['s3_bucket']))
+        execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['bucket']))
     elif op == 'restore':
-        execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['s3_bucket'], output_name, output_path))
+        execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['bucket'], output_name, output_path))
         execute("tar zxvf {} -C {} --no-overwrite-dir".format(output_path, workspace_dir))
         for f in glob.glob(os.path.join(workspace_dir, '*.xml')):
             # @TODO: need to sudo or use hpcc as the user
@@ -181,9 +181,9 @@ def dropzone(ctx, op):
         execute("tar zcvf {} -C {} .".format(output_path, ctx.obj['dropzone_dir']))
         # it uses multiparts uploadby default
         # http://docs.aws.amazon.com/cli/latest/userguide/using-s3-commands.html
-        execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['s3_bucket']))
+        execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['bucket']))
     elif op == 'restore':
-        execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['s3_bucket'], output_name, output_path))
+        execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['bucket'], output_name, output_path))
         execute("tar zxvf {} -C {} --no-overwrite-dir".format(output_path, ctx.obj['dropzone_dir']))
 
 
@@ -196,7 +196,7 @@ def dfs(ctx, op, filter):
     node_ip = lookup_private_ip()
     node_list = topology.get_node_list()
     if node_ip not in node_list:
-        print("This node is nither a Thor nor Roxie node")
+        print("This node is neither a Thor nor Roxie node")
         ctx.abort()
 
     node_index = node_list.index(node_ip) + 1
@@ -207,9 +207,9 @@ def dfs(ctx, op, filter):
     # filter out
     if op == 'save':
         execute("tar zcvf {} -C {} .".format(output_path, ctx.obj['dfs_dir']))
-        execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['s3_bucket']))
+        execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['bucket']))
     elif op == 'restore':
-        execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['s3_bucket'], output_name, output_path))
+        execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['bucket'], output_name, output_path))
         # @TODO: the original user attributes are kept
         execute("sudo tar zxvf {} -C {} --no-overwrite-dir".format(output_path, ctx.obj['dfs_dir']))
 
@@ -239,9 +239,9 @@ def dali_metadata(ctx, op, filter):
                 node_ip, f, workspace_dir, f)
             execute(cmd_export)
         execute("tar zcvf {} -C {} .".format(output_path, workspace_dir))
-        execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['s3_bucket']))
+        execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['bucket']))
     elif op == 'restore':
-        execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['s3_bucket'], output_name, output_path))
+        execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['bucket'], output_name, output_path))
         execute("tar zxvf {} -C {} --no-overwrite-dir".format(output_path, workspace_dir))
 
         node_ip_list = ctx.invoke(topology.get_node_list)
@@ -259,17 +259,91 @@ def dali_metadata(ctx, op, filter):
 
 class CheckpointService:
     service_lock = '/tmp/.haas_checkpoint.lock'
+    service_output = '/tmp/haas_checkpoint.out'
 
     @staticmethod
     def is_available():
-        return not os.path.exists(CheckpointService.service_lock)
+        # return false if CheckpointService is running
+        execute("echo Check CheckpointService status >> {}".format(CheckpointService.service_output))
+        return execute("flock -n {} date".format(CheckpointService.service_lock), check=False, silent=True)
 
     @staticmethod
     def run(cmd):
-        execute("echo '{}' > {}".format(cmd, CheckpointService.service_lock))
+        execute("echo '{}' >> {}".format(cmd, CheckpointService.service_output))
+        execute("(flock {} -c '{} | tee -a {}' &)".format(
+            CheckpointService.service_lock,
+            cmd,
+            CheckpointService.service_output)
+        )
+
+
+@cli.command()
+@click.pass_context
+def available(ctx):
+    return ctx.exit(0) if CheckpointService.is_available() else ctx.exit(1)
+
 
 @cli.command()
 @click.argument('op', type=click.Choice(['save', 'restore']))
 @click.pass_context
 def service_workunit(ctx):
     pass
+
+
+@cli.command()
+@click.argument('op', type=click.Choice(['save', 'restore']))
+@click.pass_context
+def service_workunit(ctx, op):
+    if not CheckpointService.is_available():
+        print("CheckpointService is running")
+        ctx.abort()
+    CheckpointService.run("haas checkpoint --name {} workunit {}".format(ctx.obj['name'], op))
+
+
+@cli.command()
+@click.argument('op', type=click.Choice(['save', 'restore']))
+@click.pass_context
+def service_dropzone(ctx, op):
+    if not CheckpointService.is_available():
+        print("CheckpointService is running")
+        ctx.abort()
+    CheckpointService.run("haas checkpoint --name {} dropzone {}".format(ctx.obj['name'], op))
+
+
+@cli.command()
+@click.argument('op', type=click.Choice(['save', 'restore']))
+@click.pass_context
+def service_dfs(ctx, op):
+    if not CheckpointService.is_available():
+        print("CheckpointService is running")
+        ctx.abort()
+
+    topology = HPCCTopology.generate()
+    node_list = topology.get_node_list()
+
+    if op == 'save':
+        with CommandAgent(concurrency=len(node_list)+1) as agent:
+            for node_ip in node_list:
+                agent.submit_remote_command(
+                    node_ip,
+                    "source ~/haas/scripts/init.sh; haas checkpoint --name {} dfs {}".format(
+                        ctx.obj['name'], op
+                    )
+                )
+            agent.submit_remote_command(
+                lookup_private_ip(),
+                "source ~/haas/scripts/init.sh; haas checkpoint --name {} dali_metadata {}".format(
+                    ctx.obj['name'], op
+                )
+            )
+    elif op == 'restore':
+        with CommandAgent(concurrency=len(node_list) + 1) as agent:
+            for node_ip in node_list:
+                agent.submit_remote_command(
+                    node_ip,
+                    "source ~/haas/scripts/init.sh; haas checkpoint --name {} dfs {}".format(
+                        ctx.obj['name'], op
+                    )
+                )
+        # the metadata restore operation can be run only after DFS files are restored
+        ctx.forward(dali_metadata)
