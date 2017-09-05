@@ -26,9 +26,9 @@ def cli(ctx, **kwargs):
         optargs['aws_access_key_id'] = ctx.obj['key']
     if ctx.obj['secret']:
         optargs['aws_secret_access_key_id'] = ctx.obj['secret']
-    logger.debug('aws settings:\n{}'.format(
-                 '\n'.join(
-                     ['{}={}'.format(k, v) for k, v in optargs.items()])))
+    if optargs:
+        logger.debug('aws settings:\n{}'.format(
+            '\n'.join(['{}={}'.format(k, v) for k, v in optargs.items()])))
 
     # open the client here instead of in all commands
     if ctx.obj['exec']:
@@ -143,8 +143,14 @@ def create(ctx, stack_name, config_file, parameter, wait):
 
         if bad_response(response):
             ctx.abort()
-        stack_id = response['StackId'] if 'StackId' in response else None
-        print("StackId:", str(stack_id))
+        if 'StackId' in response:
+            stack_id = response['StackId']
+            print("StackId:", stack_id)
+            logger.info('created stack %s (%d)', stack_name, stack_id)
+        else:
+            msg = 'no stackid response from create_stack'
+            print(click.style(msg, fg='yellow'))
+            logger.warning(msg)
 
         if wait:
             waiter = client.get_waiter('stack_create_complete')
