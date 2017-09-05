@@ -159,7 +159,11 @@ def workunit(ctx, op):
         execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['bucket'], output_name, output_path))
         execute("tar zxvf {} -C {} --no-overwrite-dir".format(output_path, workspace_dir))
         for f in glob.glob(os.path.join(workspace_dir, '*.xml')):
-            # @TODO: need to sudo or use hpcc as the user
+            # change the ip address of the .DLL/.so file
+            ip_match = "(\\b[0-9]{1,3}\.){3}[0-9]{1,3}\\b"
+            cmd_replace = 'sed -i -r \'s/location="\/\/{}\//location="\/\/{}\//\' {}'.format(ip_match, daliserver_ip, f)
+            execute(cmd_replace)
+            # @TODO: need to sudo or use hpcc as the user?
             execute("sudo /opt/HPCCSystems/bin/wutool DALISERVER={} restore {} INCLUDEFILES=1".format(daliserver_ip, f))
 
 
@@ -211,6 +215,7 @@ def dfs(ctx, op, filter):
     elif op == 'restore':
         execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['bucket'], output_name, output_path))
         # @TODO: the original user attributes are kept
+        execute("sudo mkdir -p {}".format(ctx.obj['dfs_dir']))
         execute("sudo tar zxvf {} -C {} --no-overwrite-dir".format(output_path, ctx.obj['dfs_dir']))
 
 
