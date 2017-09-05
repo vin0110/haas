@@ -45,7 +45,7 @@ EclSchedulerProcess,myeclscheduler,10.25.2.168,,/var/lib/HPCCSystems/myeclschedu
         pass
 
     def test_hpcc_topology_parse(self):
-        topology = HPCCTopology.parse(self.output)
+        topology = HPCCTopology(HPCCTopology.parse(self.output))
         assert topology.get_thor_master() == '10.25.2.168'
         assert sorted(topology.get_thor_slaves()) == sorted(['10.25.2.165', '10.25.2.167'])
         assert sorted(topology.get_roxie_servers()) == sorted(['10.25.2.165', '10.25.2.167'])
