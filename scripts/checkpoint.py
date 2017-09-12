@@ -7,7 +7,7 @@ import click
 from executor import execute
 import netifaces as ni
 
-from haascli.utils import CommandAgent
+from scripts.utils import CommandAgent
 
 
 logger = logging.getLogger(__name__)
@@ -108,7 +108,7 @@ def generate_hash(data, prefix='-'):
     return hash_prefix + prefix + data
 
 
-@click.group()
+@click.group(context_settings=dict(help_option_names=['-h', '--help']))
 @click.option('--name', default='mycheckpoint', help='The checkpoint name')
 @click.option('--bucket', default='hpcc_checkpoint')
 @click.option('--user', default='hpcc')
@@ -124,7 +124,7 @@ def cli(ctx, **kwargs):
     execute("mkdir -p {}".format(ctx.obj['tmp_dir']))
 
     # @TODO: should we initialize first?
-    execute("aws s3 mb s3://{}".format(ctx.obj['bucket']), silent=True)
+    # execute("aws s3 mb s3://{}".format(ctx.obj['bucket']), silent=True)
 
 
 @cli.command()
@@ -154,6 +154,7 @@ def workunit(ctx, op):
             )
         execute("tar zcf {} -C {} .".format(output_path, workspace_dir))
         execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['bucket']))
+        execute("rm {}".format(output_path))
     elif op == 'restore':
         execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['bucket'], output_name, output_path))
         execute("tar zxf {} -C {} --no-overwrite-dir".format(output_path, workspace_dir))
@@ -164,6 +165,7 @@ def workunit(ctx, op):
             execute(cmd_replace)
             # @TODO: need to sudo or use hpcc as the user?
             execute("sudo /opt/HPCCSystems/bin/wutool DALISERVER={} restore {} INCLUDEFILES=1".format(daliserver_ip, f))
+        execute("rm {}".format(output_path))
 
 
 @cli.command()
@@ -184,10 +186,13 @@ def dropzone(ctx, op):
         execute("tar zcf {} -C {} .".format(output_path, ctx.obj['dropzone_dir']))
         # it uses multiparts uploadby default
         # http://docs.aws.amazon.com/cli/latest/userguide/using-s3-commands.html
+        # @TODO: should we use sync instead of cp?
         execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['bucket']))
+        execute("rm {}".format(output_path))
     elif op == 'restore':
         execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['bucket'], output_name, output_path))
         execute("tar zxf {} -C {} --no-overwrite-dir".format(output_path, ctx.obj['dropzone_dir']))
+        execute("rm {}".format(output_path))
 
 
 @cli.command()
@@ -273,6 +278,7 @@ class CheckpointService:
     @staticmethod
     def run(cmd, async=True):
         if async:
+
             execute("(flock -n {} -c '{} | tee -a {}' &)".format(
                 CheckpointService.service_lock,
                 cmd,
@@ -280,8 +286,9 @@ class CheckpointService:
                 capture=False, check=False)
             )
             # a workaround here for getting the background process id
-            # this will fail when other flock commands are called
+            # this will fail when multiple flock commands are running in the system
             pid = execute("pidof flock", capture=True, check=False)
+            print("pid:", pid)
             return bool(pid)
         else:
             successful = execute("flock -n {} -c '{} | tee -a {}'".format(
@@ -306,7 +313,7 @@ def available(ctx):
 @click.argument('op', type=click.Choice(['save', 'restore']))
 @click.pass_context
 def service_workunit(ctx, op):
-    is_running = CheckpointService.run("haas checkpoint --name {} workunit {}".format(ctx.obj['name'], op))
+    is_running = CheckpointService.run("python ~/haas/scripts/checkpoint.py --name {} workunit {}".format(ctx.obj['name'], op))
     if is_running:
         print("CheckpointService is performing the {} operation on the workunit component".format(op))
         ctx.exit(0)
@@ -319,7 +326,8 @@ def service_workunit(ctx, op):
 @click.argument('op', type=click.Choice(['save', 'restore']))
 @click.pass_context
 def service_dropzone(ctx, op):
-    is_running = CheckpointService.run("haas checkpoint --name {} dropzone {}".format(ctx.obj['name'], op))
+    # @TODO: need to change the script path
+    is_running = CheckpointService.run("python ~/haas/scripts/checkpoint.py --name {} dropzone {}".format(ctx.obj['name'], op))
     if is_running:
         print("CheckpointService is performing the {} operation on the dropzone component".format(op))
         ctx.exit(0)
@@ -338,6 +346,7 @@ def service_dfs(ctx, op):
 
     topology = HPCCTopology.generate()
     node_list = topology.get_node_list()
+    print(node_list)
 
     print("CheckpointService is performing the {} operation on the dfs component".format(op))
 
@@ -346,14 +355,14 @@ def service_dfs(ctx, op):
             for node_ip in node_list:
                 agent.submit_remote_command(
                     node_ip,
-                    "source ~/haas/scripts/init.sh; haas checkpoint --name {} dfs {}".format(
-                        ctx.obj['name'], op
+                    "source ~/haas/scripts/init.sh; python ~/haas/scripts/checkpoint.py --name {} dfs {} >> {}".format(
+                        ctx.obj['name'], op, CheckpointService.service_output
                     )
                 )
             agent.submit_remote_command(
                 lookup_private_ip(),
-                "source ~/haas/scripts/init.sh; haas checkpoint --name {} dali_metadata {}".format(
-                    ctx.obj['name'], op
+                "source ~/haas/scripts/init.sh; python ~/haas/scripts/checkpoint.py --name {} dali_metadata {} >> {}".format(
+                    ctx.obj['name'], op, CheckpointService.service_output
                 )
             )
     elif op == 'restore':
@@ -361,7 +370,7 @@ def service_dfs(ctx, op):
             for node_ip in node_list:
                 agent.submit_remote_command(
                     node_ip,
-                    "source ~/haas/scripts/init.sh; haas checkpoint --name {} dfs {}".format(
+                    "source ~/haas/scripts/init.sh; python ~/haas/scripts/checkpoint.py --name {} dfs {}".format(
                         ctx.obj['name'], op
                     )
                 )
@@ -369,3 +378,6 @@ def service_dfs(ctx, op):
         ctx.forward(dali_metadata)
 
     ctx.exit(0)
+
+if __name__ == '__main__':
+    cli()

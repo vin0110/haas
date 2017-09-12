@@ -8,7 +8,6 @@ from haascli import config as haascli_config
 from haascli import cluster as haascli_cluster
 from haascli import stack as haascli_stack
 from haascli import data as haascli_data
-from haascli import checkpoint as haascli_checkpoint
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
@@ -41,4 +40,3 @@ cli.add_command(haascli_config.cli, name='config')
 cli.add_command(haascli_stack.cli, name='stack')
 cli.add_command(haascli_cluster.cli, name='cluster')
 cli.add_command(haascli_data.cli, name='data')
-cli.add_command(haascli_checkpoint.cli, name='checkpoint')
