@@ -1,5 +1,4 @@
 import os
-import logging
 import glob
 import hashlib
 
@@ -8,9 +7,6 @@ from executor import execute
 import netifaces as ni
 
 from scripts.utils import CommandAgent
-
-
-logger = logging.getLogger(__name__)
 
 
 class HPCCTopology:
@@ -149,16 +145,26 @@ def workunit(ctx, op):
         wu_list = lookup_workunits(daliserver_ip)
         for wu in wu_list:
             # include the *.so files
+            print("Exporting {}".format(wu))
             execute("/opt/HPCCSystems/bin/wutool DALISERVER={} archive {} TO={} INCLUDEFILES=1".format(
                 daliserver_ip, wu, workspace_dir)
             )
+        print("Creating {} from {}".format(output_path, workspace_dir))
         execute("tar zcf {} -C {} .".format(output_path, workspace_dir))
+        print("Created {}".format(output_path))
+        print("Coping {} to s3 at {}".format(output_path, ctx.obj['bucket']))
         execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['bucket']))
+        print("Copied {}".format(output_path))
         execute("rm {}".format(output_path))
     elif op == 'restore':
+        print("Coping {} from s3://{}/{}".format(output_path, ctx.obj['bucket'], output_name))
         execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['bucket'], output_name, output_path))
+        print("Copied {}".format(output_path))
+        print("Extracting {} to {}".format(output_path, workspace_dir))
         execute("tar zxf {} -C {} --no-overwrite-dir".format(output_path, workspace_dir))
+        print("Extracted {}".format(output_path))
         for f in glob.glob(os.path.join(workspace_dir, '*.xml')):
+            print("Importing {}".format(f))
             # change the ip address of the .DLL/.so file
             ip_match = "(\\b[0-9]{1,3}\.){3}[0-9]{1,3}\\b"
             cmd_replace = 'sed -i -r \'s/location="\/\/{}\//location="\/\/{}\//\' {}'.format(ip_match, daliserver_ip, f)
@@ -183,15 +189,23 @@ def dropzone(ctx, op):
     output_path = os.path.join(ctx.obj['tmp_dir'], output_name)
 
     if op == 'save':
+        print("Creating {} from {}".format(output_path, ctx.obj['dropzone_dir']))
         execute("tar zcf {} -C {} .".format(output_path, ctx.obj['dropzone_dir']))
+        print("Created {}".format(output_path))
         # it uses multiparts uploadby default
         # http://docs.aws.amazon.com/cli/latest/userguide/using-s3-commands.html
         # @TODO: should we use sync instead of cp?
+        print("Copying {} to s3 at {}".format(output_path, ctx.obj['bucket']))
         execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['bucket']))
+        print("Copied {}".format(output_path))
         execute("rm {}".format(output_path))
     elif op == 'restore':
+        print("Copying {} from s3://{}/{}".format(output_path, ctx.obj['bucket'], output_name))
         execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['bucket'], output_name, output_path))
+        print("Copied {}".format(output_path))
+        print("Extracting {} to {}".format(output_path, ctx.obj['dropzone_dir']))
         execute("tar zxf {} -C {} --no-overwrite-dir".format(output_path, ctx.obj['dropzone_dir']))
+        print("Extracted {}".format(output_path))
         execute("rm {}".format(output_path))
 
 
@@ -214,13 +228,21 @@ def dfs(ctx, op, filter):
 
     # filter out
     if op == 'save':
+        print("Creating {} from {}".format(output_path, ctx.obj['dfs_dir']))
         execute("tar zcf {} -C {} .".format(output_path, ctx.obj['dfs_dir']))
+        print("Created {}".format(output_path))
+        print("Copying {} to s3 at {}".format(output_path, ctx.obj['bucket']))
         execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['bucket']))
+        print("Copied {}".format(output_path))
     elif op == 'restore':
+        print("Copying {} from s3://{}/{}".format(output_path, ctx.obj['bucket'], output_name))
         execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['bucket'], output_name, output_path))
+        print("Copied {}".format(output_path))
         # @TODO: the original user attributes are kept
         execute("sudo mkdir -p {}".format(ctx.obj['dfs_dir']))
+        print("Extracting {} to {}".format(output_path, ctx.obj['dfs_dir']))
         execute("sudo tar zxf {} -C {} --no-overwrite-dir".format(output_path, ctx.obj['dfs_dir']))
+        print("Extracted {}".format(output_path))
 
 
 @cli.command()
@@ -243,21 +265,30 @@ def dali_metadata(ctx, op, filter):
     if op == 'save':
         dfs_file_list = lookup_dfs_files(node_ip)
         for f in dfs_file_list:
+            print("Exporting {}".format(f))
             # @TODO: need to regular expression
             cmd_export = "/opt/HPCCSystems/bin/dfuplus server={} action=savexml srcname={} dstxml={}/{}.xml".format(
                 node_ip, f, workspace_dir, f)
             execute(cmd_export)
+        print("Creating {} from {}".format(output_path, workspace_dir))
         execute("tar zcf {} -C {} .".format(output_path, workspace_dir))
+        print("Created {}".format(output_path))
+        print("Copying {} to s3 at {}".format(output_path, ctx.obj['bucket']))
         execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['bucket']))
+        print("Copied {}".format(output_path))
     elif op == 'restore':
+        print("Copying {} from s3://{}/{}".format(output_path, ctx.obj['bucket'], output_name))
         execute("aws s3 cp s3://{}/{} {}".format(ctx.obj['bucket'], output_name, output_path))
+        print("Copied {}".format(output_path))
+        print("Extracting {} to {}".format(output_path, workspace_dir))
         execute("tar zxf {} -C {} --no-overwrite-dir".format(output_path, workspace_dir))
+        print("Extracted {}".format(output_path))
 
         node_ip_list = ctx.invoke(topology.get_node_list)
         replaced_group_text = ",".join(node_ip_list)
         for f in [f for f in os.listdir(workspace_dir) if f.endswith('.xml')]:
             xml_path = os.path.join(workspace_dir, f)
-            print("Processing {}".format(xml_path))
+            print("Importing {}".format(xml_path))
             cmd_replace = "sed -i 's/<Group>.*<\/Group>/<Group>{}<\/Group>/' {}".format(replaced_group_text, xml_path)
             execute(cmd_replace)
             logical_filename = ".".join(f.split("/")[-1].split('.')[:-1])
@@ -276,28 +307,15 @@ class CheckpointService:
         return execute("flock -n {} date".format(CheckpointService.service_lock), check=False, silent=True)
 
     @staticmethod
-    def run(cmd, async=True):
-        if async:
-
-            execute("(flock -n {} -c '{} | tee -a {}' &)".format(
-                CheckpointService.service_lock,
-                cmd,
-                CheckpointService.service_output,
-                capture=False, check=False)
-            )
-            # a workaround here for getting the background process id
-            # this will fail when multiple flock commands are running in the system
-            pid = execute("pidof flock", capture=True, check=False)
-            print("pid:", pid)
-            return bool(pid)
-        else:
-            successful = execute("flock -n {} -c '{} | tee -a {}'".format(
-                CheckpointService.service_lock,
-                cmd,
-                CheckpointService.service_output,
-                capture=False, check=False, silent=True)
-            )
-            return successful
+    def run(cmd, stdout=None, stderr=None):
+        print('Running the checkpoint service: {}'.format(cmd))
+        execute("flock -n {} -c '{}'".format(
+            CheckpointService.service_lock,
+            cmd,
+            stdout_file=CheckpointService.service_output if stdout is None else stdout,
+            stderr_file=CheckpointService.service_output if stderr is None else stderr,
+            check=True, silent=False)
+        )
 
 
 @cli.command()
@@ -326,13 +344,12 @@ def service_workunit(ctx, op):
 @click.argument('op', type=click.Choice(['save', 'restore']))
 @click.pass_context
 def service_dropzone(ctx, op):
-    # @TODO: need to change the script path
-    is_running = CheckpointService.run("python ~/haas/scripts/checkpoint.py --name {} dropzone {}".format(ctx.obj['name'], op))
-    if is_running:
-        print("CheckpointService is performing the {} operation on the dropzone component".format(op))
-        ctx.exit(0)
-    else:
-        print("CheckpointService is still running")
+    try:
+        # @TODO: need to change the script path
+        print("Dropzone service is running")
+        CheckpointService.run("python ~/haas/scripts/checkpoint.py --name {} dropzone {}".format(ctx.obj['name'], op))
+    except:
+        print('Failed to run the dropzone service')
         ctx.exit(1)
 
 
@@ -357,14 +374,18 @@ def service_dfs(ctx, op):
                     node_ip,
                     "source ~/haas/scripts/init.sh; python ~/haas/scripts/checkpoint.py --name {} dfs {} >> {}".format(
                         ctx.obj['name'], op, CheckpointService.service_output
-                    )
+                    ),
+                    cid='slave_{}'.format(node_ip)
                 )
             agent.submit_remote_command(
                 lookup_private_ip(),
                 "source ~/haas/scripts/init.sh; python ~/haas/scripts/checkpoint.py --name {} dali_metadata {} >> {}".format(
                     ctx.obj['name'], op, CheckpointService.service_output
-                )
+                ),
+                cid='master_{}'.format(lookup_private_ip())
             )
+        for cid, cmd in agent.items():
+            pass
     elif op == 'restore':
         with CommandAgent(concurrency=len(node_list) + 1) as agent:
             for node_ip in node_list:
@@ -372,7 +393,8 @@ def service_dfs(ctx, op):
                     node_ip,
                     "source ~/haas/scripts/init.sh; python ~/haas/scripts/checkpoint.py --name {} dfs {}".format(
                         ctx.obj['name'], op
-                    )
+                    ),
+                    cid='slave_{}'.format(node_ip)
                 )
         # the metadata restore operation can be run only after DFS files are restored
         ctx.forward(dali_metadata)
