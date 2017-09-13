@@ -1,6 +1,8 @@
 import os
 import glob
 import hashlib
+import re
+import fnmatch
 
 import click
 from executor import execute
@@ -125,8 +127,9 @@ def cli(ctx, **kwargs):
 
 @cli.command()
 @click.argument('op', type=click.Choice(['save', 'restore']))
+@click.option('--regex', default='*', help='The regex to filter the workunit id')
 @click.pass_context
-def workunit(ctx, op):
+def workunit(ctx, op, regex):
     topology = HPCCTopology.generate()
     daliserver_ip = topology.get_daliserver_list()[0]
     if lookup_private_ip() != daliserver_ip:
@@ -140,10 +143,14 @@ def workunit(ctx, op):
     workspace_dir = os.path.join(ctx.obj['tmp_dir'], 'workunits')
     execute("mkdir -p {}".format(workspace_dir))
 
+    pattern = re.compile(fnmatch.translate(regex))
     if op == 'save':
         # @TODO: need to support regular expression
         wu_list = lookup_workunits(daliserver_ip)
         for wu in wu_list:
+            if not pattern.match(wu):
+                print('Skip {}'.format(wu))
+                continue
             # include the *.so files
             print("Exporting {}".format(wu))
             execute("/opt/HPCCSystems/bin/wutool DALISERVER={} archive {} TO={} INCLUDEFILES=1".format(
@@ -176,8 +183,9 @@ def workunit(ctx, op):
 
 @cli.command()
 @click.argument('op', type=click.Choice(['save', 'restore']))
+@click.option('--regex', default='*', help='The regex to filter file path')
 @click.pass_context
-def dropzone(ctx, op):
+def dropzone(ctx, op, regex):
     # TODO: now supports only the dropzone on the esp node
     topology = HPCCTopology.generate()
     esp_ip = topology.get_esp_list()[0]
@@ -190,7 +198,7 @@ def dropzone(ctx, op):
 
     if op == 'save':
         print("Creating {} from {}".format(output_path, ctx.obj['dropzone_dir']))
-        execute("tar zcf {} -C {} .".format(output_path, ctx.obj['dropzone_dir']))
+        execute("cd {}; find . -name '{}' | tar zcf {} -C . --files-from -".format(ctx.obj['dropzone_dir'], regex, output_path))
         print("Created {}".format(output_path))
         # it uses multiparts uploadby default
         # http://docs.aws.amazon.com/cli/latest/userguide/using-s3-commands.html
@@ -211,9 +219,9 @@ def dropzone(ctx, op):
 
 @cli.command()
 @click.argument('op', type=click.Choice(['save', 'restore']))
-@click.option('--filter', default='.*', help='The regular expression for filtering the file path')
+@click.option('--regex', default='*', help='The regex to filter file path')
 @click.pass_context
-def dfs(ctx, op, filter):
+def dfs(ctx, op, regex):
     topology = HPCCTopology.generate()
     node_ip = lookup_private_ip()
     node_list = topology.get_node_list()
@@ -229,7 +237,7 @@ def dfs(ctx, op, filter):
     # filter out
     if op == 'save':
         print("Creating {} from {}".format(output_path, ctx.obj['dfs_dir']))
-        execute("tar zcf {} -C {} .".format(output_path, ctx.obj['dfs_dir']))
+        execute("cd {}; find . -name '{}' | tar zcf {} -C . --files-from -".format(ctx.obj['dfs_dir'], regex, output_path))
         print("Created {}".format(output_path))
         print("Copying {} to s3 at {}".format(output_path, ctx.obj['bucket']))
         execute("aws s3 cp {} s3://{}".format(output_path, ctx.obj['bucket']))
@@ -247,9 +255,9 @@ def dfs(ctx, op, filter):
 
 @cli.command()
 @click.argument('op', type=click.Choice(['save', 'restore']))
-@click.option('--filter', default='.*', help='The regular expression for filtering the file path')
+@click.option('--regex', default='*', help='The regex to filter file path')
 @click.pass_context
-def dali_metadata(ctx, op, filter):
+def dali_metadata(ctx, op, regex):
     topology = HPCCTopology.generate()
     node_ip = lookup_private_ip()
     if node_ip != topology.get_esp_list()[0]:
@@ -262,9 +270,13 @@ def dali_metadata(ctx, op, filter):
     workspace_dir = os.path.join(ctx.obj['tmp_dir'], 'dali_metadata')
     execute("mkdir -p {}".format(workspace_dir))
 
+    pattern = re.compile(fnmatch.translate(regex))
     if op == 'save':
         dfs_file_list = lookup_dfs_files(node_ip)
         for f in dfs_file_list:
+            if not pattern.match(f):
+                print("Skip {}".format(f))
+                continue
             print("Exporting {}".format(f))
             # @TODO: need to regular expression
             cmd_export = "/opt/HPCCSystems/bin/dfuplus server={} action=savexml srcname={} dstxml={}/{}.xml".format(
@@ -287,6 +299,9 @@ def dali_metadata(ctx, op, filter):
         node_ip_list = ctx.invoke(topology.get_node_list)
         replaced_group_text = ",".join(node_ip_list)
         for f in [f for f in os.listdir(workspace_dir) if f.endswith('.xml')]:
+            if not pattern.match(f):
+                print("Skip {}".format(f))
+                continue
             xml_path = os.path.join(workspace_dir, f)
             print("Importing {}".format(xml_path))
             cmd_replace = "sed -i 's/<Group>.*<\/Group>/<Group>{}<\/Group>/' {}".format(replaced_group_text, xml_path)
@@ -309,7 +324,7 @@ class CheckpointService:
     @staticmethod
     def run(cmd, stdout=None, stderr=None):
         print('Running the checkpoint service: {}'.format(cmd))
-        execute("flock -n {} -c '{}'".format(
+        execute('flock -n {} -c "{}"'.format(
             CheckpointService.service_lock,
             cmd,
             stdout_file=CheckpointService.service_output if stdout is None else stdout,
@@ -329,34 +344,40 @@ def available(ctx):
 
 @cli.command()
 @click.argument('op', type=click.Choice(['save', 'restore']))
+@click.option('--regex', default='*', help='The regex to filter the workunit id')
 @click.pass_context
-def service_workunit(ctx, op):
-    is_running = CheckpointService.run("python ~/haas/scripts/checkpoint.py --name {} workunit {}".format(ctx.obj['name'], op))
-    if is_running:
-        print("CheckpointService is performing the {} operation on the workunit component".format(op))
-        ctx.exit(0)
-    else:
-        print("CheckpointService is still running")
+def service_workunit(ctx, op, regex):
+    try:
+        print("Workunit service is running")
+        CheckpointService.run("python ~/haas/scripts/checkpoint.py --name {} workunit {} --regex '{}'".format(ctx.obj['name'], op, regex))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print('Failed to run the workunit service')
         ctx.exit(1)
 
 
 @cli.command()
 @click.argument('op', type=click.Choice(['save', 'restore']))
+@click.option('--regex', default='*', help='The regex to filter file path')
 @click.pass_context
-def service_dropzone(ctx, op):
+def service_dropzone(ctx, op, regex):
     try:
         # @TODO: need to change the script path
         print("Dropzone service is running")
-        CheckpointService.run("python ~/haas/scripts/checkpoint.py --name {} dropzone {}".format(ctx.obj['name'], op))
-    except:
+        CheckpointService.run("python ~/haas/scripts/checkpoint.py --name {} dropzone {} --regex '{}'".format(ctx.obj['name'], op, regex))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         print('Failed to run the dropzone service')
         ctx.exit(1)
 
 
 @cli.command()
 @click.argument('op', type=click.Choice(['save', 'restore']))
+@click.option('--regex', default='*', help='The regex to filter file path')
 @click.pass_context
-def service_dfs(ctx, op):
+def service_dfs(ctx, op, regex):
     if not CheckpointService.is_available():
         print("CheckpointService is still running")
         ctx.exit(1)
@@ -372,15 +393,15 @@ def service_dfs(ctx, op):
             for node_ip in node_list:
                 agent.submit_remote_command(
                     node_ip,
-                    "source ~/haas/scripts/init.sh; python ~/haas/scripts/checkpoint.py --name {} dfs {} >> {}".format(
-                        ctx.obj['name'], op, CheckpointService.service_output
+                    "source ~/haas/scripts/init.sh; python ~/haas/scripts/checkpoint.py --name {} dfs {} --regex '{}' >> {}".format(
+                        ctx.obj['name'], op, regex, CheckpointService.service_output
                     ),
                     cid='slave_{}'.format(node_ip)
                 )
             agent.submit_remote_command(
                 lookup_private_ip(),
-                "source ~/haas/scripts/init.sh; python ~/haas/scripts/checkpoint.py --name {} dali_metadata {} >> {}".format(
-                    ctx.obj['name'], op, CheckpointService.service_output
+                "source ~/haas/scripts/init.sh; python ~/haas/scripts/checkpoint.py --name {} dali_metadata {} --regex '{}'>> {}".format(
+                    ctx.obj['name'], op, regex, CheckpointService.service_output
                 ),
                 cid='master_{}'.format(lookup_private_ip())
             )
@@ -391,13 +412,13 @@ def service_dfs(ctx, op):
             for node_ip in node_list:
                 agent.submit_remote_command(
                     node_ip,
-                    "source ~/haas/scripts/init.sh; python ~/haas/scripts/checkpoint.py --name {} dfs {}".format(
-                        ctx.obj['name'], op
+                    "source ~/haas/scripts/init.sh; python ~/haas/scripts/checkpoint.py --name {} dfs {} --regex '{}'".format(
+                        ctx.obj['name'], op, regex
                     ),
                     cid='slave_{}'.format(node_ip)
                 )
         # the metadata restore operation can be run only after DFS files are restored
-        ctx.forward(dali_metadata)
+        ctx.forward(dali_metadata, regex=regex)
 
     ctx.exit(0)
 

@@ -1,6 +1,8 @@
 import os
 import time
 import logging
+import base64
+
 import click
 from executor.ssh.client import RemoteCommand
 
@@ -12,6 +14,7 @@ logger = logging.getLogger(__name__)
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
 @click.option('--bucket', default='hpcc_checkpoint')
 @click.option('-r', '--resource', type=click.Choice(['dfs', 'workunit', 'dropzone']), default=None, help='HPCC resources')
+@click.option('--regex', default='*', help='The regex (filename glob) to filter file path or workunit id')
 @click.option('--wait/--no-wait', default=True, help='Waiting for the operation to complete')
 @click.pass_context
 def cli(ctx, **kwargs):
@@ -37,7 +40,9 @@ def save(ctx, stack_name, checkpoint_name):
     # @TODO: if the required library is installed in system, the init.sh can be removed
     # @TODO: the path to checkpoint.py needs to reflect the changes in auto_hpcc.sh
     # didn't use RemoteCommand because I cannot make it work
-    os.system("ssh {} 'source /home/osr/haas/scripts/init.sh && $(nohup python /home/osr/haas/scripts/checkpoint.py --name {} service_{} save > {} 2>&1 &)'".format(topology.get_master_ip(), checkpoint_name, resource_name, service_output))
+    # base64 turns out to be an easy way to escape commands
+    cmd = "source /home/osr/haas/scripts/init.sh && $(nohup python /home/osr/haas/scripts/checkpoint.py --name {} service_{} save --regex '{}'> {} 2>&1 &)".format(checkpoint_name, resource_name, ctx.obj['regex'], service_output)
+    os.system("ssh {} 'echo {} | base64 -d | bash'".format(topology.get_master_ip(), base64.b64encode(cmd.encode()).decode()))
 
     if ctx.obj['wait']:
         _wait_until_complete(topology.get_master_ip())
@@ -57,7 +62,8 @@ def restore(ctx, checkpoint_name, stack_name):
 
     service_output = "/tmp/haas_data.out"
 
-    os.system("ssh {} 'source /home/osr/haas/scripts/init.sh && $(nohup python /home/osr/haas/scripts/checkpoint.py --name {} service_{} restore > {} 2>&1 &)'".format(topology.get_master_ip(), checkpoint_name, resource_name, service_output))
+    cmd = "source /home/osr/haas/scripts/init.sh && $(nohup python /home/osr/haas/scripts/checkpoint.py --name {} service_{} restore --regex '{}'> {} 2>&1 &)".format(checkpoint_name, resource_name, ctx.obj['regex'], service_output)
+    os.system("ssh {} 'echo {} | base64 -d | bash'".format(topology.get_master_ip(), base64.b64encode(cmd.encode()).decode()))
 
     if ctx.obj['wait']:
         _wait_until_complete(topology.get_master_ip())
