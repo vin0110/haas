@@ -18,8 +18,8 @@ slaves_per_node=`aws ec2 describe-tags --region ${region} --filters "Name=resour
 
 host_file=/tmp/ip.list
 rm -rf ${host_file}; touch ${host_file}
-aws ec2 describe-instances --region ${region} --filters "Name=tag:aws:cloudformation:stack-name,Values=${stack_name}" "Name=tag:aws:cloudformation:logical-id,Values=MasterASG" | jq -r '.Reservations[].Instances[] | .PrivateIpAddress' >> ${host_file}
-aws ec2 describe-instances --region ${region} --filters "Name=tag:aws:cloudformation:stack-name,Values=${stack_name}" "Name=tag:aws:cloudformation:logical-id,Values=SlaveASG" | jq -r '.Reservations[].Instances[] | .PrivateIpAddress' >> ${host_file}
+aws ec2 describe-instances --region ${region} --filters "Name=tag:aws:cloudformation:stack-name,Values=${stack_name}" "Name=tag:aws:cloudformation:logical-id,Values=MasterASG" | jq -r '.Reservations[].Instances[] | select(.State.Name=="running") | .PrivateIpAddress' >> ${host_file}
+aws ec2 describe-instances --region ${region} --filters "Name=tag:aws:cloudformation:stack-name,Values=${stack_name}" "Name=tag:aws:cloudformation:logical-id,Values=SlaveASG" | jq -r '.Reservations[].Instances[] | select(.State.Name=="running") | .PrivateIpAddress' >> ${host_file}
 cluster_size=`tail -n +2 ${host_file} | wc -l`
 
 # output to log
@@ -34,7 +34,7 @@ cat ${host_file}
 
 # generate the configuration file for HPCC
 tmp_config=/tmp/environment.xml
-/opt/HPCCSystems/sbin/envgen -env ${tmp_config} -ipfile ${host_file} -thornodes ${cluster_size} -roxienodes ${cluster_size} -slavesPerNode ${slaves_per_node}
+/opt/HPCCSystems/sbin/envgen -env ${tmp_config} -ipfile ${host_file} -thornodes ${cluster_size} -roxienodes ${cluster_size} -slavesPerNode ${slaves_per_node} -supportnodes 1
 sudo cp ${tmp_config} /etc/HPCCSystems/environment.xml
 
 # TODO: event driven?
