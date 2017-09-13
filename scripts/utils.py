@@ -1,22 +1,8 @@
-from concurrent.futures import ThreadPoolExecutor
-from concurrent import futures
 import logging
 
 from executor.concurrent import CommandPool
 from executor.ssh.client import RemoteCommand
 from executor import ExternalCommand
-
-
-class Singleton(type):
-    ''' Used for meta class
-    http://amir.rachum.com/blog/2012/04/26/implementing-the-singleton-pattern-in-python/
-    '''
-    def __call__(cls, *args, **kwargs):
-        try:
-            return cls.__instance
-        except AttributeError:
-            cls.__instance = super(Singleton, cls).__call__(*args, **kwargs)
-            return cls.__instance
 
 
 class Node(object):
@@ -42,30 +28,6 @@ class Node(object):
 
     def __hash__(self):
         return hash(self.__repr__())
-
-
-class ThreadAgent:
-    def __init__(self, concurrency=8):
-        self.executor = ThreadPoolExecutor(max_workers=concurrency)
-        self.future_records = {}
-        self.logger = logging.getLogger('.'.join([__name__, self.__class__.__name__]))
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self.executor.shutdown(wait=True)
-
-    def submit(self, job_id, func, *args, **kwargs):
-        future = self.executor.submit(func, *args, **kwargs)
-        self.future_records[job_id] = future
-
-    def wait(self, timeout=None):
-        self.logger.info("Waiting for %s jobs to complete" % len(self.future_records))
-        futures.wait(self.future_records.values())
-
-    def results(self):
-        return {k: v.result() for (k, v) in self.future_records.items()}
 
 
 class CommandAgent:

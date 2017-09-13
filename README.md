@@ -33,8 +33,10 @@ haas --debug stack create mycluster1 -p template_url=templates/haas_cft.json -p 
 
 ```shell
 # save a cluster to S3
-haas data save mycluster1
+haas data [--resource dropzone|workunit|dfs] save mycluster mycheckpoint
 # restore a cluster from S3
-haas data restore mycluster1 mycluster2
+haas data [--resource dropzone|workunit|dfs] restore mycheckpoint mycluster
+# check progress
+haas data progress mycluster
 ```
 
