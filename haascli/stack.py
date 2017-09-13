@@ -174,7 +174,10 @@ def create(ctx, stack_name, config_file, parameter, wait):
 
 @cli.command()
 @click.option('-l', '--long', is_flag=True)
-@click.option('-f', '--filter', multiple=True)
+@click.option('-f', '--filter', multiple=True,
+              help='Filter is a string. For valid filters see '
+              'https://docs.aws.amazon.com/AWSCloudFormation/latest/'
+              'APIReference/API_ListStacks.html')
 @click.pass_context
 def list(ctx, long, filter):
     '''lists stacks
