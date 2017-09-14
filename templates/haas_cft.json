@@ -418,7 +418,7 @@
                                 "#!/bin/bash",
                                 "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1",
                                 "echo [Initialization] starting the master node",
-				"wget https://raw.githubusercontent.com/vin0110/haas/master/scripts/setup_ami.sh -O /tmp/setup_ami.sh;",                        			         {
+				"wget https://raw.githubusercontent.com/vin0110/haas/issue_54/scripts/setup_ami.sh -O /tmp/setup_ami.sh;",                        			         {
                                     "Fn::Join": [
                                         " ",
                                         [
@@ -603,7 +603,7 @@
                                 "#!/bin/bash",
                                 "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1",
                                 "echo [Initialization] starting the slave node",
-				"wget https://raw.githubusercontent.com/vin0110/haas/master/scripts/setup_ami.sh -O /tmp/setup_ami.sh;",                        			         {
+				"wget https://raw.githubusercontent.com/vin0110/haas/issue_54/scripts/setup_ami.sh -O /tmp/setup_ami.sh;",                        			         {
                                     "Fn::Join": [
                                         " ",
                                         [
