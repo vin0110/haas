@@ -1,0 +1,2 @@
+fasteners==0.14.1
+netifaces==0.10.6

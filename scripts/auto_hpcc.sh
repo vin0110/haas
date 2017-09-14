@@ -35,9 +35,9 @@ echo Instance Id: ${instance_id}
 echo Instance Type: ${instance_type}
 echo Stack Name: ${stack_name}
 echo Region: ${region}
-echo Thor nodes: $(thor_nodes)
-echo Roxie nodes: $(roxie_nodes)
-echo Support nodes: $(support_nodes)
+echo Thor nodes: ${thor_nodes}
+echo Roxie nodes: ${roxie_nodes}
+echo Support nodes: ${support_nodes}
 echo Slaves Per Node: ${slaves_per_node}
 echo Host Lists
 cat ${host_file}

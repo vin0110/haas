@@ -6,6 +6,9 @@ roxie_nodes=$2
 support_nodes=$3
 slaves_per_node=$4
 
+echo Setup AMI ${thor_nodes} ${roxie_nodes} ${support_nodes} ${slaves_per_node}
+
+
 # update system
 sudo apt-get update
 sudo apt-get -y install awscli
