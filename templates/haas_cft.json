@@ -79,7 +79,7 @@
             "Description": "Number of support nodes in the cluster",
             "Type": "Number"
         },
-        "NumberOfSlavesPerNode": {
+        "SlavesPerNode": {
             "Default": "1",
             "Description": "Number of THOR slave threads per slave instance",
             "Type": "Number"
