@@ -341,10 +341,10 @@
                         }
                     },
                     {
-                        "Key": "slavesPerNode",
+                        "Key": "SlavesPerNode",
                         "PropagateAtLaunch": true,
                         "Value": {
-                            "Ref": "NumberOfSlavesPerNode"
+                            "Ref": "SlavesPerNode"
                         }
                     },
                     {
@@ -526,10 +526,10 @@
                         }
                     },
                     {
-                        "Key": "slavesPerNode",
+                        "Key": "SlavesPerNode",
                         "PropagateAtLaunch": true,
                         "Value": {
-                            "Ref": "NumberOfSlavesPerNode"
+                            "Ref": "SlavesPerNode"
                         }
                     },
                     {
