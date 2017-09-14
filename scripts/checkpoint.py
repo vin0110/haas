@@ -8,7 +8,7 @@ import fnmatch
 from executor import execute
 import netifaces as ni
 
-from scripts.utils import CommandAgent
+from utils import CommandAgent
 
 DFS_DIR = "/var/lib/HPCCSystems/hpcc-data"
 DROPZONE_DIR = "/var/lib/HPCCSystems/mydropzone"
@@ -179,7 +179,7 @@ def dropzone(op, bucket, checkpoint, regex):
     esp_ip = topology.get_esp_list()[0]
     if lookup_private_ip() != esp_ip:
         print('This is not the ESP node. Aborted.')
-        exit(-1)
+        return -1
 
     output_name = generate_hash("{}-dropzone.tar.gz".format(checkpoint))
     output_path = os.path.join('/tmp', checkpoint, output_name)
@@ -207,6 +207,7 @@ def dropzone(op, bucket, checkpoint, regex):
                                                              DROPZONE_DIR))
         print("Extracted {}".format(output_path))
         execute("rm {}".format(output_path))
+    return 0
 
 
 def dfs(op, bucket, checkpoint, regex):
@@ -341,7 +342,7 @@ def available():
 def service_workunit(op, bucket, checkpoint, regex):
     try:
         print("Workunit service is running")
-        CheckpointService.run("python ~/haas/scripts/checkpoint.py "
+        CheckpointService.run("python /opt/haas/checkpoint.py "
                               "wu {} {} {} '{}'"
                               .format(op, bucket, checkpoint, regex))
     except Exception:
@@ -352,17 +353,16 @@ def service_workunit(op, bucket, checkpoint, regex):
 
 
 def service_dropzone(op, bucket, checkpoint, regex):
-    try:
-        # @TODO: need to change the script path
+    if CheckpointService.is_available():
         print("Dropzone service is running")
-        CheckpointService.run("python ~/haas/scripts/checkpoint.py "
-                              "dz {} {} {} '{}'"
-                              .format(op, bucket, checkpoint, regex))
-    except Exception:
-        import traceback
-        traceback.print_exc()
+        return dropzone(op, bucket, checkpoint, regex)
+        # CheckpointService.run("python /opt/haas/checkpoint.py "
+        #                       "dz {} {} {} '{}'"
+        #                       .format(op, bucket, checkpoint, regex))
+        return 0
+    else:
         print('Failed to run the dropzone service')
-        exit(1)
+        return -1
 
 
 def service_dfs(op, bucket, checkpoint, regex):
@@ -382,7 +382,7 @@ def service_dfs(op, bucket, checkpoint, regex):
             for node_ip in node_list:
                 agent.submit_remote_command(
                     node_ip,
-                    "python /opt/haas/scripts/checkpoint.py dfs {} {} '{}' "
+                    "python /opt/haas/checkpoint.py dfs {} {} '{}' "
                     ">> {}".format(
                         op, bucket, checkpoint, regex,
                         CheckpointService.service_output),
@@ -406,7 +406,7 @@ def service_dfs(op, bucket, checkpoint, regex):
             for node_ip in node_list:
                 agent.submit_remote_command(
                     node_ip,
-                    "python ~/haas/scripts/checkpoint.py dfs {} {} {} '{}'"
+                    "python /opt/haas/checkpoint.py dfs {} {} {} '{}'"
                     .format(op, bucket, checkpoint, regex),
                     cid='slave_{}'.format(node_ip)
                 )
