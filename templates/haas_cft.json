@@ -341,7 +341,6 @@
                         }
                     },
                     {
-                    {
                         "Key": "UserNameAndPassword",
                         "PropagateAtLaunch": true,
                         "Value": {
@@ -519,7 +518,6 @@
                             "Ref": "AWS::StackName"
                         }
                     },
-                    {
                     {
                         "Key": "UserNameAndPassword",
                         "PropagateAtLaunch": true,
