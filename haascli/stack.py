@@ -146,7 +146,7 @@ def create(ctx, stack_name, config_file, parameter, wait):
         if 'StackId' in response:
             stack_id = response['StackId']
             print("StackId:", stack_id)
-            logger.info('created stack %s (%d)', stack_name, stack_id)
+            logger.info('created stack %s (%s)', stack_name, stack_id)
         else:
             msg = 'no stackid response from create_stack'
             print(click.style(msg, fg='yellow'))
