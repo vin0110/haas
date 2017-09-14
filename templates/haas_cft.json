@@ -341,12 +341,6 @@
                         }
                     },
                     {
-                        "Key": "SlavesPerNode",
-                        "PropagateAtLaunch": true,
-                        "Value": {
-                            "Ref": "SlavesPerNode"
-                        }
-                    },
                     {
                         "Key": "UserNameAndPassword",
                         "PropagateAtLaunch": true,
@@ -526,12 +520,6 @@
                         }
                     },
                     {
-                        "Key": "SlavesPerNode",
-                        "PropagateAtLaunch": true,
-                        "Value": {
-                            "Ref": "SlavesPerNode"
-                        }
-                    },
                     {
                         "Key": "UserNameAndPassword",
                         "PropagateAtLaunch": true,
