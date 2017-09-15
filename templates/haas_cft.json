@@ -3,7 +3,7 @@
     "Mappings": {
         "RegionMap": {
             "us-east-1": {
-                "64": "ami-24c2ee32"
+                "64": "ami-cd0f5cb6"
             }
         }
     },
