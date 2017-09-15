@@ -341,13 +341,6 @@
                         }
                     },
                     {
-			"Key": "slavesPerNode",
-			"PropagateAtLaunch": true,
-			"Value": {
-                            "Ref": "SlavesPerNode"
-			}
-                    },
-                    {
 			"Key": "UserNameAndPassword",
                         "PropagateAtLaunch": true,
                         "Value": {
@@ -524,13 +517,6 @@
                         "Value": {
                             "Ref": "AWS::StackName"
                         }
-                    },
-                    {
-			"Key": "slavesPerNode",
-			"PropagateAtLaunch": true,
-			"Value": {
-                            "Ref": "SlavesPerNode"
-			}
                     },
                     {
                         "Key": "UserNameAndPassword",
