@@ -11,13 +11,10 @@ echo Setup AMI ${thor_nodes} ${roxie_nodes} ${support_nodes} ${slaves_per_node}
 
 # update system
 sudo apt-get update
-sudo apt-get -y install awscli
-
-# install pip for haas modules
-sudo apt-get -y install python-pip
+sudo apt-get -y install python-pip awscli jq
 
 # get hpcc platform 
-wget http://cdn.hpccsystems.com/releases/CE-Candidate-6.4.0/bin/platform/hpccsystems-platform-community_6.4.0-1xenial_amd64.deb
+curl -s http://cdn.hpccsystems.com/releases/CE-Candidate-6.4.0/bin/platform/hpccsystems-platform-community_6.4.0-1xenial_amd64.deb -O hpccsystems-platform-community_6.4.0-1xenial_amd64.deb
 
 # install hpcc -- fails to install because of dependencies
 sudo dpkg -i *.deb
@@ -34,16 +31,15 @@ HAAS_DIR=/opt/haas
 sudo mkdir $HAAS_DIR
 sudo chmod a+rwx $HAAS_DIR
 cd $HAAS_DIR
-wget ${GIT_DIR}/auto_hpcc.sh
-wget ${GIT_DIR}/checkpoint.py
-wget ${GIT_DIR}/utils.py
-wget ${GIT_DIR}/requirements.txt
-
-# create environment.xml file
-sudo bash ./auto_hpcc.sh ${thor_nodes} ${roxie_nodes} ${support_nodes}\
-     ${slaves_per_node} 
+for file in auto_hpcc.sh checkpoint.py /utils.py requirements.txt
+do
+    curl -s ${GIT_DIR}/${file} -O ${file}
+done
 
 # install python libraries needed for checkpoint
 sudo pip install -r requirements.txt
 rm -f requirements.txt
 
+# create environment.xml file
+sudo bash ./auto_hpcc.sh ${thor_nodes} ${roxie_nodes} ${support_nodes}\
+     ${slaves_per_node}
