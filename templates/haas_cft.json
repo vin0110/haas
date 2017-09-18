@@ -3,11 +3,19 @@
     "Mappings": {
         "RegionMap": {
             "us-east-1": {
-                "64": "ami-cd0f5cb6"
+                "64":
+                {
+                    "Ref": "AMI-Id"
+                }
             }
         }
     },
     "Parameters": {
+        "AMI-Id": {
+            "Default": "ami-cd0f5cb6",
+            "Description": "AMI Id (ie, 'ami-cd0f5cb6'",
+            "Type": "String"
+        },
         "AvailabilityZone": {
             "AllowedValues": [
                 "us-east-1d"
