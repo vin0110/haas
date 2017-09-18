@@ -289,7 +289,7 @@ def ip(ctx, stack_name, group, all):
     # the 'PhysicalResourceId'
     asg_name = group
     myasg = ctx.obj['client'].describe_stack_resource(
-        StackName='onenode2', LogicalResourceId=asg_name)
+        StackName=stack_name, LogicalResourceId=asg_name)
 
     # create an ASG client to get group dictionaries, from which we
     # exact the ec2 instance ids
@@ -297,7 +297,11 @@ def ip(ctx, stack_name, group, all):
     groups = asg.describe_auto_scaling_groups(
         AutoScalingGroupNames=[
             myasg['StackResourceDetail']['PhysicalResourceId']])
-    instance_ids = groups['AutoScalingGroups'][0]['Instances']
+    try:
+        instance_ids = groups['AutoScalingGroups'][0]['Instances']
+    except IndexError:
+        print(click.style('ASG {} has no instances'.format(group), fg='red'))
+        ctx.abort()
 
     # create ec2 client to get instance dictionaries
     ec2 = boto3.client('ec2')
@@ -309,3 +313,28 @@ def ip(ctx, stack_name, group, all):
               ['Association']['PublicIp'])
         if not all:
             break
+
+
+@cli.command()
+@click.argument('stack-name')
+@click.option('-l', '--long', is_flag=True)
+@click.pass_context
+def resources(ctx, stack_name, long):
+    '''List all resources assigned to a stack'''
+
+    res = ctx.obj['client'].describe_stack_resources(StackName=stack_name)
+    resources = res['StackResources']
+
+    if long:
+        fmt = "LogicalResourceId: {LogicalResourceId}\n"\
+              "\tPhysicalResourceId: {PhysicalResourceId}\n"\
+              "\tResourceStatus: {ResourceStatus}\n"\
+              "\tResourceType: {ResourceType}\n"\
+              "\tStackId: {StackId}\n"\
+              "\tStackName: {StackName}\n"\
+              "\tTimestamp: {Timestamp}"
+    else:
+        fmt = "{LogicalResourceId:24} {ResourceType:37} {ResourceStatus:18}"
+
+    for resource in resources:
+        print(fmt.format(**resource))
