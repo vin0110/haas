@@ -289,7 +289,7 @@ def ip(ctx, stack_name, group, all):
     # the 'PhysicalResourceId'
     asg_name = group
     myasg = ctx.obj['client'].describe_stack_resource(
-        StackName='onenode2', LogicalResourceId=asg_name)
+        StackName=stack_name, LogicalResourceId=asg_name)
 
     # create an ASG client to get group dictionaries, from which we
     # exact the ec2 instance ids
@@ -297,7 +297,11 @@ def ip(ctx, stack_name, group, all):
     groups = asg.describe_auto_scaling_groups(
         AutoScalingGroupNames=[
             myasg['StackResourceDetail']['PhysicalResourceId']])
-    instance_ids = groups['AutoScalingGroups'][0]['Instances']
+    try:
+        instance_ids = groups['AutoScalingGroups'][0]['Instances']
+    except IndexError:
+        print(click.style('ASG {} has no instances'.format(group), fg='red'))
+        ctx.abort()
 
     # create ec2 client to get instance dictionaries
     ec2 = boto3.client('ec2')
