@@ -313,3 +313,28 @@ def ip(ctx, stack_name, group, all):
               ['Association']['PublicIp'])
         if not all:
             break
+
+
+@cli.command()
+@click.argument('stack-name')
+@click.option('-l', '--long', is_flag=True)
+@click.pass_context
+def resources(ctx, stack_name, long):
+    '''List all resources assigned to a stack'''
+
+    res = ctx.obj['client'].describe_stack_resources(StackName=stack_name)
+    resources = res['StackResources']
+
+    if long:
+        fmt = "LogicalResourceId: {LogicalResourceId}\n"\
+              "\tPhysicalResourceId: {PhysicalResourceId}\n"\
+              "\tResourceStatus: {ResourceStatus}\n"\
+              "\tResourceType: {ResourceType}\n"\
+              "\tStackId: {StackId}\n"\
+              "\tStackName: {StackName}\n"\
+              "\tTimestamp: {Timestamp}"
+    else:
+        fmt = "{LogicalResourceId:24} {ResourceType:37} {ResourceStatus:18}"
+
+    for resource in resources:
+        print(fmt.format(**resource))
