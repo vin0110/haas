@@ -146,7 +146,7 @@ def create(ctx, stack_name, config_file, parameter, wait):
         if 'StackId' in response:
             stack_id = response['StackId']
             print("StackId:", stack_id)
-            logger.info('created stack %s (%d)', stack_name, stack_id)
+            logger.info('created stack %s (%s)', stack_name, stack_id)
         else:
             msg = 'no stackid response from create_stack'
             print(click.style(msg, fg='yellow'))
@@ -174,10 +174,12 @@ def create(ctx, stack_name, config_file, parameter, wait):
 
 @cli.command()
 @click.option('-l', '--long', is_flag=True)
+@click.option('-a', '--all', is_flag=True,
+              help="shows deleted stacks as well")
 @click.option('-f', '--filter', multiple=True)
 @click.pass_context
-def list(ctx, long, filter):
-    '''lists stacks
+def list(ctx, long, all, filter):
+    '''Lists stacks
     '''
     logger.debug('haas stack list long={} filter={}'.format(long, filter))
 
@@ -191,7 +193,9 @@ def list(ctx, long, filter):
             ctx.abort()
 
         for stack in response['StackSummaries']:
-            print(stack['StackName'], 'status:', stack['StackStatus'])
+            if not all and stack['StackStatus'] == 'DELETE_COMPLETE':
+                continue
+            print("%-30s %s" % (stack['StackName'], stack['StackStatus'], ))
             if long:
                 print('\tTemplate:', stack['TemplateDescription'])
                 print('\tId:', stack['StackId'])
@@ -240,11 +244,11 @@ def delete(ctx, stack_name, wait):
 @click.argument('stack-name')
 @click.pass_context
 def events(ctx, stack_name):
-    '''Display events for a stack
-    Events might be delivered in more than one message
-    '''
+    '''Display events for a stack'''
     logger.debug('haas stack delete stack_name={}'.format(stack_name))
 
+    # Events might be delivered in more than one message, so use a
+    # paginator
     try:
         client = ctx.obj['client']
         paginator = client.get_paginator('describe_stack_events')
@@ -252,10 +256,12 @@ def events(ctx, stack_name):
 
         for events in events_iter:
             for event in events['StackEvents']:
-                print('%-20s %-40s %s' %
-                      (event['ResourceStatus'],
+                status = event['ResourceStatus']
+                print(click.style('%-20s %-40s %s' %
+                      (status,
                        event['ResourceType'],
-                       event['Timestamp'].strftime('%Y.%m.%d-%X')))
+                       event['Timestamp'].strftime('%Y.%m.%d-%X')),
+                    fg='red' if "FAILED" in status else 'black'))
     except ClientError as e:
         logger.error(e.response['Error']['Message'])
         ctx.abort()
@@ -268,6 +274,38 @@ def events(ctx, stack_name):
 
 
 @cli.command()
+@click.argument('stack-name')
+@click.option('-g', '--group', default="MasterASG",
+              help='name of auto-scaling group (default: "MasterASG")')
+@click.option('-a', '--all', is_flag=True,
+              help="show al ips")
 @click.pass_context
-def update(ctx):
-    pass
+def ip(ctx, stack_name, group, all):
+    '''Return public IP address for EC2 instances.
+    By default shows only the first instance in MasterASG.
+    '''
+    # Must walk a very complex path of ids and dictionaries.
+    # first get dictionary describing asg, from which we exact
+    # the 'PhysicalResourceId'
+    asg_name = group
+    myasg = ctx.obj['client'].describe_stack_resource(
+        StackName='onenode2', LogicalResourceId=asg_name)
+
+    # create an ASG client to get group dictionaries, from which we
+    # exact the ec2 instance ids
+    asg = boto3.client('autoscaling')
+    groups = asg.describe_auto_scaling_groups(
+        AutoScalingGroupNames=[
+            myasg['StackResourceDetail']['PhysicalResourceId']])
+    instance_ids = groups['AutoScalingGroups'][0]['Instances']
+
+    # create ec2 client to get instance dictionaries
+    ec2 = boto3.client('ec2')
+    for instance_dict in instance_ids:
+        instance_id = instance_dict['InstanceId']
+        instance = ec2.describe_instances(InstanceIds=[instance_id])
+        print(instance['Reservations'][0]['Instances'][0]
+              ['NetworkInterfaces'][0]['PrivateIpAddresses'][0]
+              ['Association']['PublicIp'])
+        if not all:
+            break
