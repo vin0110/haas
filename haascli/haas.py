@@ -19,6 +19,7 @@ from haascli import data as haascli_data
               type=click.Path(exists=True, resolve_path=True),
               default=lambda: os.path.join(os.path.expanduser('~'), '.haas'),
               help="The haas configuration directory")
+@click.option('--config', default='mycluster', help='The config name')
 @click.option('-L', '--log-file',
               help='set log file; default "{}"; "-" for stdout'
               .format(haascli.DEFAULT_LOG))

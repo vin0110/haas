@@ -7,6 +7,7 @@ import click
 from executor.ssh.client import RemoteCommand
 
 from haascli.cluster import ClusterTopology
+from haascli.config import HaasConfigurationManager, HaasConfigurationKey
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +42,17 @@ def save(ctx, stack_name, checkpoint_name):
     # @TODO: the path to checkpoint.py needs to reflect the changes in auto_hpcc.sh
     # didn't use RemoteCommand because I cannot make it work
     # base64 turns out to be an easy way to escape commands
+    conf = HaasConfigurationManager().get(ctx.obj['config'])
     cmd = "source /home/osr/haas/scripts/init.sh && $(nohup python /home/osr/haas/scripts/checkpoint.py --name {} service_{} save --regex '{}'> {} 2>&1 &)".format(checkpoint_name, resource_name, ctx.obj['regex'], service_output)
-    os.system("ssh {} 'echo {} | base64 -d | bash'".format(topology.get_master_ip(), base64.b64encode(cmd.encode()).decode()))
+    os.system("ssh -i {} -l {} {} 'echo {} | base64 -d | bash'".format(
+        conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+        conf.get(HaasConfigurationKey.HAAS_SSH_USER),
+        topology.get_master_ip(),
+        base64.b64encode(cmd.encode()).decode())
+    )
 
     if ctx.obj['wait']:
-        _wait_until_complete(topology.get_master_ip())
+        _wait_until_complete(topology.get_master_ip(), conf)
 
 
 @cli.command()
@@ -62,11 +69,17 @@ def restore(ctx, checkpoint_name, stack_name):
 
     service_output = "/tmp/haas_data.out"
 
+    conf = HaasConfigurationManager().get(ctx.obj['config'])
     cmd = "source /home/osr/haas/scripts/init.sh && $(nohup python /home/osr/haas/scripts/checkpoint.py --name {} service_{} restore --regex '{}'> {} 2>&1 &)".format(checkpoint_name, resource_name, ctx.obj['regex'], service_output)
-    os.system("ssh {} 'echo {} | base64 -d | bash'".format(topology.get_master_ip(), base64.b64encode(cmd.encode()).decode()))
+    os.system("ssh {} 'echo {} | base64 -d | bash'".format(
+        conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+        conf.get(HaasConfigurationKey.HAAS_SSH_USER),
+        topology.get_master_ip(),
+        base64.b64encode(cmd.encode()).decode())
+    )
 
     if ctx.obj['wait']:
-        _wait_until_complete(topology.get_master_ip())
+        _wait_until_complete(topology.get_master_ip(), conf)
 
 
 @cli.command()
@@ -75,15 +88,21 @@ def restore(ctx, checkpoint_name, stack_name):
 def progress(ctx, stack_name):
     topology = ClusterTopology.parse(stack_name)
 
+    conf = HaasConfigurationManager().get(ctx.obj['config'])
     cmd = RemoteCommand(topology.get_master_ip(),
                         'source ~/haas/scripts/init.sh; python /home/osr/haas/scripts/checkpoint.py --name {} available; echo $?',
+                        identity_file=conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+                        ssh_user=conf.get(HaasConfigurationKey.HAAS_SSH_USER),
                         capture=True)
     cmd.start()
     if cmd.output == '0':
         print("No service is running")
     else:
         print('Data service is running....')
-        RemoteCommand(topology.get_master_ip(), "tail -f /tmp/haas_data.out", check=False).start()
+        RemoteCommand(topology.get_master_ip(), "tail -f /tmp/haas_data.out",
+                      identity_file=conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+                      ssh_user=conf.get(HaasConfigurationKey.HAAS_SSH_USER),
+                      check=False).start()
 
 
 @cli.command()
@@ -92,9 +111,12 @@ def resize(ctx):
     pass
 
 
-def _wait_until_complete(master_ip):
+def _wait_until_complete(master_ip, conf):
     while True:
-        cmd = RemoteCommand(master_ip, "pgrep -f checkpoint.py", capture=True, check=False)
+        cmd = RemoteCommand(master_ip, "pgrep -f checkpoint.py",
+                            identity_file=conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+                            ssh_user=conf.get(HaasConfigurationKey.HAAS_SSH_USER),
+                            capture=True, check=False)
         cmd.start()
         pid_list = cmd.output
         # print(pid_list, len(pid_list.splitlines()))
