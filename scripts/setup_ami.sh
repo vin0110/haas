@@ -13,6 +13,9 @@ echo Setup AMI ${thor_nodes} ${roxie_nodes} ${support_nodes} ${slaves_per_node}
 sudo apt-get update
 sudo apt-get -y install python-pip awscli jq
 
+# install the helper script for cfn-signal
+sudo pip install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+
 # get hpcc platform 
 curl -s http://cdn.hpccsystems.com/releases/CE-Candidate-6.4.0/bin/platform/hpccsystems-platform-community_6.4.0-1xenial_amd64.deb -O hpccsystems-platform-community_6.4.0-1xenial_amd64.deb
 

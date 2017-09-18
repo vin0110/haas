@@ -47,6 +47,6 @@ tmp_config=/tmp/environment.xml
 /opt/HPCCSystems/sbin/envgen -env ${tmp_config} -ipfile ${host_file} \
 			     -thornodes ${thor_nodes}\
 			     -roxienodes ${roxie_nodes}\
-			      -supportnodes ${support_node}\
+			     -supportnodes ${support_nodes}\
 			     -slavesPerNode ${slaves_per_node}
 sudo cp ${tmp_config} /etc/HPCCSystems/environment.xml
