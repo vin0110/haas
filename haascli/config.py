@@ -22,6 +22,8 @@ class HaasConfigurationKey(enum.Enum):
     HAAS_SERVICE_INSTANCE_TYPE = 'haas_service_instance_type'
     HAAS_WORKER_INSTANCE_TYPE = 'haas_worker_instance_type'
     HAAS_EBS_VOLUME_SIZE = 'haas_ebs_volume_size'
+    HAAS_SSH_KEY = 'haas_ssh_key'
+    HAAS_SSH_USER = 'haas_ssh_user'
 
 
 class HaaSConfiguration(object):
@@ -71,6 +73,9 @@ class HaasConfigurationManager(metaclass=Singleton):
 
     def get_config_path(self, config_name):
         return os.path.join(self.config_db_dir, "{}.yaml".format(config_name))
+
+    def get(self, config_name):
+        return HaaSConfiguration.load(self.get_config_path(config_name))
 
     def add(self, config_name, config_item):
         if not isinstance(config_item, HaaSConfiguration):
@@ -142,8 +147,12 @@ def update(ctx):
 @click.option('--slave_instance_type', type=click.Choice(['t2.micro', 'c4.large']), default='t2.micro',
               help="The instance type of the master nodes")
 @click.option('--ebs_volume_size', type=int, default=20, help="The size of the EBS volume")
+@click.option('--ssh-key', type=str, default=lambda: os.path.join(os.path.expanduser('~'), '.ssh', 'id_rsa'),
+              help="The private key to connect to the cluster")
+@click.option('--ssh-user', type=str, default='ubuntu', help="The user name to connect to the cluster")
 @click.pass_context
-def new(ctx, name, key, master_node, slave_node, master_instance_type, slave_instance_type, ebs_volume_size):
+def new(ctx, name, key, master_node, slave_node, master_instance_type, slave_instance_type, ebs_volume_size,
+        ssh_key, ssh_user):
     config_manager = HaasConfigurationManager(haas_dir=ctx.obj['config_dir'])
 
     if config_manager.exists(name):
@@ -157,7 +166,9 @@ def new(ctx, name, key, master_node, slave_node, master_instance_type, slave_ins
             HaasConfigurationKey.HAAS_WORKER_NUM_NODES: slave_node,
             HaasConfigurationKey.HAAS_SERVICE_INSTANCE_TYPE: master_instance_type,
             HaasConfigurationKey.HAAS_WORKER_INSTANCE_TYPE: slave_instance_type,
-            HaasConfigurationKey.HAAS_EBS_VOLUME_SIZE: ebs_volume_size
+            HaasConfigurationKey.HAAS_EBS_VOLUME_SIZE: ebs_volume_size,
+            HaasConfigurationKey.HAAS_SSH_KEY: ssh_key,
+            HaasConfigurationKey.HAAS_SSH_USER: ssh_user,
         }
     )
     config_manager.add(name, haas_config)
