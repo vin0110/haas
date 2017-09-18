@@ -29,7 +29,7 @@ sudo apt-get -y -f install
 rm -f *.deb
 
 # get haas code
-GIT_DIR=https://raw.githubusercontent.com/vin0110/haas/issue_54/scripts
+GIT_DIR=https://raw.githubusercontent.com/vin0110/haas/master/scripts
 HAAS_DIR=/opt/haas
 sudo mkdir $HAAS_DIR
 sudo chmod a+rwx $HAAS_DIR
