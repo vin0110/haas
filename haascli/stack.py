@@ -257,14 +257,18 @@ def events(ctx, stack_name):
         paginator = client.get_paginator('describe_stack_events')
         events_iter = paginator.paginate(StackName=stack_name)
 
+        fmt = '%-20s %-40s %s'
         for events in events_iter:
             for event in events['StackEvents']:
                 status = event['ResourceStatus']
-                print(click.style('%-20s %-40s %s' %
-                      (status,
+                tup = (status,
                        event['ResourceType'],
-                       event['Timestamp'].strftime('%Y.%m.%d-%X')),
-                    fg='red' if "FAILED" in status else 'white'))
+                       event['Timestamp'].strftime('%Y.%m.%d-%X'), )
+                if "FAILED" in status:
+                    msg = click.style(fmt % tup, fg='red')
+                else:
+                    msg = fmt % tup
+                print(msg)
     except ClientError as e:
         logger.error(e.response['Error']['Message'])
         ctx.abort()
