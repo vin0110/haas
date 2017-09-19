@@ -14,8 +14,6 @@ logger = logging.getLogger(__name__)
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
 @click.option('--bucket', default='hpcc_checkpoint')
-@click.option('-r', '--resource', type=click.Choice(['dfs', 'workunit', 'dropzone']), default=None, help='HPCC resources')
-@click.option('--regex', default='*', help='The regex (filename glob) to filter file path or workunit id')
 @click.option('--wait/--no-wait', default=True, help='Waiting for the operation to complete')
 @click.pass_context
 def cli(ctx, **kwargs):
@@ -25,15 +23,12 @@ def cli(ctx, **kwargs):
 
 
 @cli.command()
-@click.argument('stack_name')
-@click.argument('checkpoint_name')
+@click.argument('stack-name')
+@click.argument('resource-name', type=click.Choice(['dfs', 'workunit', 'dropzone']))
+@click.argument('checkpoint-name')
+@click.option('--regex', default='*', help='The regex (filename glob) to filter file path or workunit id')
 @click.pass_context
-def save(ctx, stack_name, checkpoint_name):
-    resource_name = ctx.obj['resource']
-    if not resource_name:
-        print('Need to specify a resource')
-        ctx.abort()
-
+def save(ctx, stack_name, resource_name, checkpoint_name, regex):
     topology = ClusterTopology.parse(stack_name)
 
     service_output = "/tmp/haas_data.out"
@@ -43,7 +38,9 @@ def save(ctx, stack_name, checkpoint_name):
     # didn't use RemoteCommand because I cannot make it work
     # base64 turns out to be an easy way to escape commands
     conf = HaasConfigurationManager().get(ctx.obj['config'])
-    cmd = "source /home/osr/haas/scripts/init.sh && $(nohup python /home/osr/haas/scripts/checkpoint.py --name {} service_{} save --regex '{}'> {} 2>&1 &)".format(checkpoint_name, resource_name, ctx.obj['regex'], service_output)
+    cmd = "source /home/osr/haas/scripts/init.sh &&" +\
+          " $(nohup python /home/osr/haas/scripts/checkpoint.py --name {} service_{} save --regex '{}'" +\
+          " > {} 2>&1 &)".format(checkpoint_name, resource_name, regex, service_output)
     os.system("ssh -i {} -l {} {} 'echo {} | base64 -d | bash'".format(
         conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
         conf.get(HaasConfigurationKey.HAAS_SSH_USER),
@@ -56,21 +53,20 @@ def save(ctx, stack_name, checkpoint_name):
 
 
 @cli.command()
-@click.argument('checkpoint_name')
-@click.argument('stack_name')
+@click.argument('checkpoint-name')
+@click.argument('resource-name', type=click.Choice(['dfs', 'workunit', 'dropzone']))
+@click.argument('stack-name')
+@click.option('--regex', default='*', help='The regex (filename glob) to filter file path or workunit id')
 @click.pass_context
-def restore(ctx, checkpoint_name, stack_name):
-    resource_name = ctx.obj['resource']
-    if not resource_name:
-        print('Need to specify a resource')
-        ctx.abort()
-
+def restore(ctx, checkpoint_name, resource_name, stack_name, regex):
     topology = ClusterTopology.parse(stack_name)
 
     service_output = "/tmp/haas_data.out"
 
     conf = HaasConfigurationManager().get(ctx.obj['config'])
-    cmd = "source /home/osr/haas/scripts/init.sh && $(nohup python /home/osr/haas/scripts/checkpoint.py --name {} service_{} restore --regex '{}'> {} 2>&1 &)".format(checkpoint_name, resource_name, ctx.obj['regex'], service_output)
+    cmd = "source /home/osr/haas/scripts/init.sh &&" +\
+          " $(nohup python /home/osr/haas/scripts/checkpoint.py --name {} service_{} restore --regex '{}'" +\
+          " > {} 2>&1 &)".format(checkpoint_name, resource_name, regex, service_output)
     os.system("ssh {} 'echo {} | base64 -d | bash'".format(
         conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
         conf.get(HaasConfigurationKey.HAAS_SSH_USER),
