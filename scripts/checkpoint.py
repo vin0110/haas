@@ -6,7 +6,6 @@ import re
 import fnmatch
 
 from executor import execute
-import netifaces as ni
 
 from utils import CommandAgent
 
@@ -74,15 +73,7 @@ class HPCCTopology:
 
 
 def lookup_private_ip():
-    # workaround for VCL and AWS, maybe
-    interface_list = ni.interfaces()
-    selected_interface = 'eth0'
-    for interface in interface_list:
-        if '0' in interface:
-            selected_interface = interface
-            break
-    ni.ifaddresses(selected_interface)
-    ip = ni.ifaddresses(selected_interface)[2][0]['addr']
+    ip = execute("curl -s http://169.254.169.254/latest/meta-data/local-ipv4", capture=True)
     return ip
 
 
