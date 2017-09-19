@@ -264,10 +264,9 @@ def events(ctx, stack_name):
                 tup = (status,
                        event['ResourceType'],
                        event['Timestamp'].strftime('%Y.%m.%d-%X'), )
+                msg = fmt % tup
                 if "FAILED" in status:
-                    msg = click.style(fmt % tup, fg='red')
-                else:
-                    msg = fmt % tup
+                    msg = click.style(msg, fg='red')
                 print(msg)
     except ClientError as e:
         logger.error(e.response['Error']['Message'])
