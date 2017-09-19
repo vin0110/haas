@@ -1,7 +1,6 @@
 import os
 import sys
 import logging
-import re
 
 import click
 import boto3
@@ -19,8 +18,7 @@ logger = logging.getLogger(__name__)
 @click.option('-c', '--config', default='.')
 @click.pass_context
 def cli(ctx, **kwargs):
-    """Stack related operations
-    """
+    """Stack related operations"""
 
     optargs = {}
     if ctx.obj['region']:
@@ -49,35 +47,56 @@ def cli(ctx, **kwargs):
 @click.option('--wait/--no-wait', default=False)
 @click.pass_context
 def create(ctx, stack_name, config_file, parameter, wait):
-    '''Creates an AWS stack
-    '''
+    '''Creates an AWS stack'''
+
     logger.debug('haas stack create stack_name={}'.format(stack_name))
     if not ctx.obj['exec']:
         logger.warning('no exec mode')
 
     parameters = {}
     if config_file:
-        config_path = os.path.join(ctx.obj['config_dir'], config_file)
-        try:
-            f = open(config_path, 'r')
-            # @TODO: assuming all config files are yaml
-            yaml = YAML()
-            parameters = yaml.load(f)
-        except IOError as e:
-            print(click.style(
-                'ERROR: Could not open config file: {}', fg='red')
-                .format(str(e)))
-            ctx.abort()
-    else:
-        for param in parameter:
+        f = None
+        if config_file[0] == '/':
+            # assume it is an absolute path
+            config_path = config_file
+        elif config_file[0] == '~':
+            # expand user
+            components = config_file.split('/')
+            config_path = os.path.join(
+                os.path.expanduser(components[0], *components[1:]))
+        elif config_file[0] == '.':
+            # relative path
+            config_path = os.path.join(*config_file.split())
+        else:
+            # try relative path; then try config directory
             try:
-                key, val = param.split('=')
-            except IndexError:
-                val = True
-            if key in parameters:
-                logger.warning('overwriting {} to {} was {}'.format(
-                    key, val, parameters[key]))
-            parameters[key] = val
+                f = open(config_file, 'r')
+            except IOError:
+                config_path = os.path.join(ctx.obj['config_dir'],
+                                           'config',
+                                           config_file)
+
+        if not f:
+            try:
+                f = open(config_path, 'r')
+                # @TODO: assuming all config files are yaml
+            except IOError as e:
+                print(click.style(
+                    'ERROR: Could not open config file: {}'.format(str(e)),
+                    fg='red'))
+                ctx.abort()
+        yaml = YAML()
+        parameters = yaml.load(f)
+
+    for param in parameter:
+        try:
+            key, val = param.split('=')
+        except IndexError:
+            val = True
+        if key in parameters:
+            logger.warning('overwriting {} to {} was {}'.format(
+                key, val, parameters[key]))
+        parameters[key] = val
 
     try:
         # template_url MUST be defined; but it isn't a parameter
@@ -355,6 +374,8 @@ def resources(ctx, stack_name, long):
 @click.option('-c', '--configure', is_flag=True)
 @click.pass_context
 def template(ctx, template_url, configure):
+    '''Show parameters in given parameter or interactively create YAML
+    that can be copied into a file.'''
     try:
         summary = getTemplateSummary(ctx.obj['client'], template_url)
     except KeyError as e:
@@ -364,11 +385,8 @@ def template(ctx, template_url, configure):
     if configure:
         yaml = YAML()
         configuration = {}
-        config_name = input('name for this configuration: ')
-        # verify that this is a valid name
-        if re.match('^[_\w-]+$', config_name) is None:
-            print(click.style('invalid name', fg='red'))
-            ctx.abort()
+
+        configuration['template_url'] = template_url
 
         for param in summary['Parameters']:
             print('Parameter: {}'.format(param['ParameterKey']))
@@ -387,13 +405,10 @@ def template(ctx, template_url, configure):
                     value = param['DefaultValue']
             else:
                 value = input("set value: ")
-            if param['ParameterType'] in ["Number", "List"]:
-                configuration[param['ParameterKey']] = eval(value, {}, {})
-            else:
-                # assume it is a string
-                configuration[param['ParameterKey']] = value
+            # assume it is a scalar that appears a string
+            configuration[param['ParameterKey']] = str(value)
 
-        yaml.dump({config_name: configuration}, sys.stdout)
+        yaml.dump(configuration, sys.stdout)
     else:
         fmt = "{ParameterKey:30} {ParameterType:30} {DefaultValue}"
         print(fmt.format(**dict(ParameterKey="Name", ParameterType="Type",
@@ -422,9 +437,13 @@ def getTemplateBody(template_url):
             fn = template_url[len(local_prefix):]
             return open(fn, 'r').read()
         else:
-            raise KeyError("could not locate template")
+            # try local file
+            fn = template_url
+            return open(fn, 'r').read()
+    except IOError as e:
+        raise KeyError(e.strerror)
     except requests.ConnectionError as e:
-        KeyError(e)
+        raise KeyError(e)
 
 
 def getTemplateSummary(client, template_url):
