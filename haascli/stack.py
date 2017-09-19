@@ -358,7 +358,7 @@ def template(ctx, template_url, configure):
     try:
         summary = getTemplateSummary(ctx.obj['client'], template_url)
     except KeyError as e:
-        print(click.style(e, fg='red'))
+        print(click.style(str(e), fg='red'))
         ctx.abort()
 
     if configure:

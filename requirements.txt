@@ -32,6 +32,7 @@ python-dateutil==2.6.1
 PyYAML==3.12
 requests==2.18.3
 rsa==3.4.2
+ruamel.yaml==0.15.34
 s3transfer==0.1.10
 simplegeneric==0.8.1
 six==1.10.0
