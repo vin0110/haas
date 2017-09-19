@@ -264,7 +264,7 @@ def events(ctx, stack_name):
                       (status,
                        event['ResourceType'],
                        event['Timestamp'].strftime('%Y.%m.%d-%X')),
-                    fg='red' if "FAILED" in status else 'black'))
+                    fg='red' if "FAILED" in status else 'white'))
     except ClientError as e:
         logger.error(e.response['Error']['Message'])
         ctx.abort()
