@@ -3,6 +3,7 @@ import boto3
 import executor
 from executor.ssh.client import RemoteCommand
 
+from haascli.config import HaasConfigurationManager, HaasConfigurationKey
 
 
 class ClusterTopology(object):
@@ -58,54 +59,74 @@ def cli(ctx, **kwargs):
 @cli.command()
 @click.pass_context
 def start(ctx):
+    conf = HaasConfigurationManager().get(ctx.obj['config'])
     # @TODO: a cache mechanism would be better
     topology = ClusterTopology.parse(ctx.obj['stack_name'])
     # @TODO: after we finalize the AMI, we don't need to switch to the user's directory
     RemoteCommand(
         topology.get_master_ip(),
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv start"'
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv start"',
+        identity_file=conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+        ssh_user=conf.get(HaasConfigurationKey.HAAS_SSH_USER)
     ).start()
     RemoteCommand(
         topology.get_master_ip(),
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init start"'
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init start"',
+        identity_file=conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+        ssh_user=conf.get(HaasConfigurationKey.HAAS_SSH_USER)
     ).start()
 
 @cli.command()
 @click.pass_context
 def stop(ctx):
+    conf = HaasConfigurationManager().get(ctx.obj['config'])
     topology = ClusterTopology.parse(ctx.obj['stack_name'])
     RemoteCommand(
         topology.get_master_ip(),
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv stop"'
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv stop"',
+        identity_file=conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+        ssh_user=conf.get(HaasConfigurationKey.HAAS_SSH_USER)
     ).start()
     RemoteCommand(
         topology.get_master_ip(),
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init stop"'
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init stop"',
+        identity_file=conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+        ssh_user=conf.get(HaasConfigurationKey.HAAS_SSH_USER)
     ).start()
 
 
 @cli.command()
 @click.pass_context
 def restart(ctx):
+    conf = HaasConfigurationManager().get(ctx.obj['config'])
     topology = ClusterTopology.parse(ctx.obj['stack_name'])
     RemoteCommand(
         topology.get_master_ip(),
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv restart"'
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv restart"',
+        identity_file=conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+        ssh_user=conf.get(HaasConfigurationKey.HAAS_SSH_USER)
     ).start()
     RemoteCommand(
         topology.get_master_ip(),
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init restart"'
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init restart"',
+        identity_file=conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+        ssh_user=conf.get(HaasConfigurationKey.HAAS_SSH_USER)
     ).start()
 
 @cli.command()
 @click.pass_context
 def status(ctx):
+    conf = HaasConfigurationManager().get(ctx.obj['config'])
     topology = ClusterTopology.parse(ctx.obj['stack_name'])
     RemoteCommand(
         topology.get_master_ip(),
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv status"'
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv status"',
+        identity_file=conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+        ssh_user=conf.get(HaasConfigurationKey.HAAS_SSH_USER)
     ).start()
     RemoteCommand(
         topology.get_master_ip(),
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init status"'
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init status"',
+        identity_file=conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+        ssh_user=conf.get(HaasConfigurationKey.HAAS_SSH_USER)
     ).start()

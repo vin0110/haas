@@ -1,13 +1,11 @@
 {
     "Description": "HaaS Stack",
-    "Mappings": {
-        "RegionMap": {
-            "us-east-1": {
-                "64": "ami-24c2ee32"
-            }
-        }
-    },
     "Parameters": {
+        "AMIId": {
+            "Default": "ami-cd0f5cb6",
+            "Description": "AMI Id (ie, 'ami-cd0f5cb6'",
+            "Type": "String"
+        },
         "AvailabilityZone": {
             "AllowedValues": [
                 "us-east-1d"
@@ -42,11 +40,6 @@
             "Description": "HPCC Thor Master EC2 instance type",
             "Type": "String"
         },
-        "NumberOfSlavesPerNode": {
-            "Default": "1",
-            "Description": "Number of THOR slave nodes per slave instance",
-            "Type": "Number"
-        },
         "SlaveInstanceType": {
             "AllowedValues": [
                 "t2.micro",
@@ -68,6 +61,26 @@
             "Default": "",
             "Description": "(Optional) Enter like: username/password Used to log into ECL Watch and ECL IDE.",
             "Type": "String"
+        },
+        "ThorNodes": {
+            "Default": "1",
+            "Description": "Number of THOR slave nodes in the cluster",
+            "Type": "Number"
+        },
+        "RoxieNodes": {
+            "Default": "0",
+            "Description": "Number of ROXIE worker nodes in the cluster",
+            "Type": "Number"
+        },
+        "SupportNodes": {
+            "Default": "0",
+            "Description": "Number of support nodes in the cluster",
+            "Type": "Number"
+        },
+        "SlavesPerNode": {
+            "Default": "1",
+            "Description": "Number of THOR slave threads per slave instance",
+            "Type": "Number"
         }
     },
     "Resources": {
@@ -326,14 +339,7 @@
                         }
                     },
                     {
-                        "Key": "slavesPerNode",
-                        "PropagateAtLaunch": true,
-                        "Value": {
-                            "Ref": "NumberOfSlavesPerNode"
-                        }
-                    },
-                    {
-                        "Key": "UserNameAndPassword",
+			"Key": "UserNameAndPassword",
                         "PropagateAtLaunch": true,
                         "Value": {
                             "Ref": "UserNameAndPassword"
@@ -376,13 +382,7 @@
                     "Ref": "HPCCInstanceProfile"
                 },
                 "ImageId": {
-                    "Fn::FindInMap": [
-                        "RegionMap",
-                        {
-                            "Ref": "AWS::Region"
-                        },
-                        "64"
-                    ]
+		    "Ref": "AMIId"
                 },
                 "InstanceType": {
                     "Ref": "MasterInstanceType"
@@ -403,7 +403,26 @@
                                 "#!/bin/bash",
                                 "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1",
                                 "echo [Initialization] starting the master node",
-                                "su - osr /bin/bash -c 'wget https://raw.githubusercontent.com/vin0110/haas/master/scripts/auto_hpcc.sh -O /tmp/auto_hpcc.sh; bash /tmp/auto_hpcc.sh'",
+				"wget https://raw.githubusercontent.com/vin0110/haas/master/scripts/setup_ami.sh -O /tmp/setup_ami.sh;",                        			         {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+					    "sudo bash /tmp/setup_ami.sh",
+                                            {
+                                                "Ref": "ThorNodes"
+                                            },
+                                            {
+                                                "Ref": "RoxieNodes"
+                                            },
+                                            {
+                                                "Ref": "SupportNodes"
+                                            },
+                                            {
+                                                "Ref": "SlavesPerNode"
+                                            }
+					]
+				    ]
+				},
                                 "echo [Initialization] completed the master node",
                                 "echo SCRIPT: 'Signal stack that setup of HPCC System is complete.'",
                                 {
@@ -492,13 +511,6 @@
                         }
                     },
                     {
-                        "Key": "slavesPerNode",
-                        "PropagateAtLaunch": true,
-                        "Value": {
-                            "Ref": "NumberOfSlavesPerNode"
-                        }
-                    },
-                    {
                         "Key": "UserNameAndPassword",
                         "PropagateAtLaunch": true,
                         "Value": {
@@ -542,13 +554,7 @@
                     "Ref": "HPCCInstanceProfile"
                 },
                 "ImageId": {
-                    "Fn::FindInMap": [
-                        "RegionMap",
-                        {
-                            "Ref": "AWS::Region"
-                        },
-                        "64"
-                    ]
+		    "Ref": "AMIId"
                 },
                 "InstanceType": {
                     "Ref": "SlaveInstanceType"
@@ -569,7 +575,26 @@
                                 "#!/bin/bash",
                                 "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1",
                                 "echo [Initialization] starting the slave node",
-                                "su - osr /bin/bash -c 'wget https://raw.githubusercontent.com/vin0110/haas/master/scripts/auto_hpcc.sh -O /tmp/auto_hpcc.sh; bash /tmp/auto_hpcc.sh'",
+				"wget https://raw.githubusercontent.com/vin0110/haas/master/scripts/setup_ami.sh -O /tmp/setup_ami.sh;",                        			         {
+                                    "Fn::Join": [
+                                        " ",
+                                        [
+					    "sudo bash /tmp/setup_ami.sh",
+                                            {
+                                                "Ref": "ThorNodes"
+                                            },
+                                            {
+                                                "Ref": "RoxieNodes"
+                                            },
+                                            {
+                                                "Ref": "SupportNodes"
+                                            },
+                                            {
+                                                "Ref": "SlavesPerNode"
+                                            }
+					]
+				    ]
+				},
                                 "echo [Initialization] completed the slave node",
                                 "echo SCRIPT: 'Signal stack that setup of HPCC System is complete.'",
                                 {
