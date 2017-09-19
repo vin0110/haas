@@ -1,10 +1,13 @@
 import os
+import sys
 import logging
+import re
 
 import click
 import boto3
-import yaml
 import requests
+from ruamel.yaml import YAML
+
 from botocore.exceptions import ClientError, PartialCredentialsError
 
 from haascli import bad_response
@@ -58,6 +61,7 @@ def create(ctx, stack_name, config_file, parameter, wait):
         try:
             f = open(config_path, 'r')
             # @TODO: assuming all config files are yaml
+            yaml = YAML()
             parameters = yaml.load(f)
         except IOError as e:
             print(click.style(
@@ -344,3 +348,86 @@ def resources(ctx, stack_name, long):
 
     for resource in resources:
         print(fmt.format(**resource))
+
+
+@cli.command()
+@click.argument('template-url')
+@click.option('-c', '--configure', is_flag=True)
+@click.pass_context
+def template(ctx, template_url, configure):
+    try:
+        summary = getTemplateSummary(ctx.obj['client'], template_url)
+    except KeyError as e:
+        print(click.style(e, fg='red'))
+        ctx.abort()
+
+    if configure:
+        yaml = YAML()
+        configuration = {}
+        config_name = input('name for this configuration: ')
+        # verify that this is a valid name
+        if re.match('^[_\w-]+$', config_name) is None:
+            print(click.style('invalid name', fg='red'))
+            ctx.abort()
+
+        for param in summary['Parameters']:
+            print('Parameter: {}'.format(param['ParameterKey']))
+            if "Description" in param:
+                print('\t{}'.format(param['Description']))
+            if "ParameterConstraints" in param:
+                print('\tConstraints: {}'.format(
+                    param['ParameterConstraints']))
+            print('\t{}'.format(param['ParameterType']))
+            if "DefaultValue" in param:
+                ans = input('default is "{}" change [y/N]? '.format(
+                    param['DefaultValue']))
+                if ans.lower() in ['y', 'yes']:
+                    value = input("new value: ")
+                else:
+                    value = param['DefaultValue']
+            else:
+                value = input("set value: ")
+            if param['ParameterType'] in ["Number", "List"]:
+                configuration[param['ParameterKey']] = eval(value, {}, {})
+            else:
+                # assume it is a string
+                configuration[param['ParameterKey']] = value
+
+        yaml.dump({config_name: configuration}, sys.stdout)
+    else:
+        fmt = "{ParameterKey:30} {ParameterType:30} {DefaultValue}"
+        print(fmt.format(**dict(ParameterKey="Name", ParameterType="Type",
+                                DefaultValue="Default")))
+        print(fmt.format(**dict(ParameterKey="-"*4, ParameterType="-"*4,
+                                DefaultValue="-"*7)))
+        for param in summary['Parameters']:
+            if "DefaultValue" not in param:
+                param["DefaultValue"] = ''
+            print(fmt.format(**param))
+
+
+############################################
+# support routines
+############################################
+def getTemplateBody(template_url):
+    '''Returns the template body from the given URN'''
+    local_prefix = 'file://'
+    try:
+        if template_url.startswith('http'):
+            r = requests.get(template_url, allow_redirects=True)
+            if r.status_code != 200:
+                raise KeyError('invalid URL (%d)', r.status_code)
+            return r.text
+        elif template_url.startswith(local_prefix):
+            fn = template_url[len(local_prefix):]
+            return open(fn, 'r').read()
+        else:
+            raise KeyError("could not locate template")
+    except requests.ConnectionError as e:
+        KeyError(e)
+
+
+def getTemplateSummary(client, template_url):
+    '''Returns template summary'''
+    body = getTemplateBody(template_url)
+    return client.get_template_summary(TemplateBody=body)
