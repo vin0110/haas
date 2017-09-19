@@ -48,7 +48,6 @@ class ClusterTopology(object):
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
-@click.option('-s', '--stack_name', default='myhpcc')
 @click.pass_context
 def cli(ctx, **kwargs):
     """Cluster related operations
@@ -57,11 +56,12 @@ def cli(ctx, **kwargs):
 
 
 @cli.command()
+@click.argument('stack-name')
 @click.pass_context
-def start(ctx):
+def start(ctx, stack_name):
     conf = HaasConfigurationManager().get(ctx.obj['config'])
     # @TODO: a cache mechanism would be better
-    topology = ClusterTopology.parse(ctx.obj['stack_name'])
+    topology = ClusterTopology.parse(stack_name)
     # @TODO: after we finalize the AMI, we don't need to switch to the user's directory
     RemoteCommand(
         topology.get_master_ip(),
@@ -76,11 +76,13 @@ def start(ctx):
         ssh_user=conf.get(HaasConfigurationKey.HAAS_SSH_USER)
     ).start()
 
+
 @cli.command()
+@click.argument('stack-name')
 @click.pass_context
-def stop(ctx):
+def stop(ctx, stack_name):
     conf = HaasConfigurationManager().get(ctx.obj['config'])
-    topology = ClusterTopology.parse(ctx.obj['stack_name'])
+    topology = ClusterTopology.parse(stack_name)
     RemoteCommand(
         topology.get_master_ip(),
         'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv stop"',
@@ -96,10 +98,11 @@ def stop(ctx):
 
 
 @cli.command()
+@click.argument('stack-name')
 @click.pass_context
-def restart(ctx):
+def restart(ctx, stack_name):
     conf = HaasConfigurationManager().get(ctx.obj['config'])
-    topology = ClusterTopology.parse(ctx.obj['stack_name'])
+    topology = ClusterTopology.parse(stack_name)
     RemoteCommand(
         topology.get_master_ip(),
         'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv restart"',
@@ -113,11 +116,13 @@ def restart(ctx):
         ssh_user=conf.get(HaasConfigurationKey.HAAS_SSH_USER)
     ).start()
 
+
 @cli.command()
+@click.argument('stack-name')
 @click.pass_context
-def status(ctx):
+def status(ctx, stack_name):
     conf = HaasConfigurationManager().get(ctx.obj['config'])
-    topology = ClusterTopology.parse(ctx.obj['stack_name'])
+    topology = ClusterTopology.parse(stack_name)
     RemoteCommand(
         topology.get_master_ip(),
         'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv status"',
