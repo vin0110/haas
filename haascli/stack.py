@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import time
 
 import click
 import boto3
@@ -268,9 +269,21 @@ def delete(ctx, stack_name, wait):
 
 @cli.command()
 @click.argument('stack-name')
+@click.option('-f', '--follow', is_flag=True,
+              help='wait for additional events')
 @click.pass_context
-def events(ctx, stack_name):
+def events(ctx, stack_name, follow):
     '''Display events for a stack'''
+    def prEvent(event):
+        status = event['ResourceStatus']
+        tup = (status,
+               event['ResourceType'],
+               event['Timestamp'].strftime('%Y.%m.%d-%X'), )
+        msg = fmt % tup
+        if "FAILED" in status:
+            msg = click.style(msg, fg='red')
+        print(msg)
+
     logger.debug('haas stack delete stack_name={}'.format(stack_name))
 
     # Events might be delivered in more than one message, so use a
@@ -281,16 +294,24 @@ def events(ctx, stack_name):
         events_iter = paginator.paginate(StackName=stack_name)
 
         fmt = '%-20s %-40s %s'
-        for events in events_iter:
-            for event in events['StackEvents']:
-                status = event['ResourceStatus']
-                tup = (status,
-                       event['ResourceType'],
-                       event['Timestamp'].strftime('%Y.%m.%d-%X'), )
-                msg = fmt % tup
-                if "FAILED" in status:
-                    msg = click.style(msg, fg='red')
-                print(msg)
+        if follow:
+            num_events = 0
+            while 1:
+                # accumulate all events
+                all_events = []
+                for events in events_iter:
+                    all_events.extend(events['StackEvents'])
+                # reverse events
+                all_events.reverse()
+                # print new events
+                for event in all_events[num_events:]:
+                    prEvent(event)
+                num_events = len(all_events)
+                time.sleep(5)
+        else:
+            for events in events_iter:
+                for event in events['StackEvents']:
+                    prEvent(event)
     except ClientError as e:
         logger.error(e.response['Error']['Message'])
         ctx.abort()
