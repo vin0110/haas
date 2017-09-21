@@ -4,7 +4,6 @@ import logging
 import click
 
 import haascli
-from haascli import config as haascli_config
 from haascli import cluster as haascli_cluster
 from haascli import stack as haascli_stack
 from haascli import data as haascli_data
