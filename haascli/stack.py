@@ -302,6 +302,45 @@ def events(ctx, stack_name):
             raise KeyError(e)
 
 
+def get_ip(stack_name, group, all=False, client=None):
+
+    # Must walk a very complex path of ids and dictionaries.
+    # first get dictionary describing asg, from which we exact
+    # the 'PhysicalResourceId'
+    asg_name = group
+    try:
+        if not client:
+            client = boto3.client('cloudformation')
+        myasg = client.describe_stack_resource(
+            StackName=stack_name, LogicalResourceId=asg_name)
+    except ClientError as e:
+        raise KeyError(e)
+
+    # create an ASG client to get group dictionaries, from which we
+    # exact the ec2 instance ids
+    asg = boto3.client('autoscaling')
+    groups = asg.describe_auto_scaling_groups(
+        AutoScalingGroupNames=[
+            myasg['StackResourceDetail']['PhysicalResourceId']])
+    try:
+        instance_ids = groups['AutoScalingGroups'][0]['Instances']
+    except IndexError:
+        raise KeyError('ASG {} has no instances'.format(group))
+
+    # create ec2 client to get instance dictionaries
+    ec2 = boto3.client('ec2')
+    ips = []
+    for instance_dict in instance_ids:
+        instance_id = instance_dict['InstanceId']
+        instance = ec2.describe_instances(InstanceIds=[instance_id])
+        ip.append(instance['Reservations'][0]['Instances'][0]
+                  ['NetworkInterfaces'][0]['PrivateIpAddresses'][0]
+                  ['Association']['PublicIp'])
+        if not all:
+            break
+    return ips
+
+
 @cli.command()
 @click.argument('stack-name')
 @click.option('-g', '--group', default="MasterASG",
@@ -313,35 +352,13 @@ def ip(ctx, stack_name, group, all):
     '''Return public IP address for EC2 instances.
     By default shows only the first instance in MasterASG.
     '''
-    # Must walk a very complex path of ids and dictionaries.
-    # first get dictionary describing asg, from which we exact
-    # the 'PhysicalResourceId'
-    asg_name = group
-    myasg = ctx.obj['client'].describe_stack_resource(
-        StackName=stack_name, LogicalResourceId=asg_name)
-
-    # create an ASG client to get group dictionaries, from which we
-    # exact the ec2 instance ids
-    asg = boto3.client('autoscaling')
-    groups = asg.describe_auto_scaling_groups(
-        AutoScalingGroupNames=[
-            myasg['StackResourceDetail']['PhysicalResourceId']])
     try:
-        instance_ids = groups['AutoScalingGroups'][0]['Instances']
-    except IndexError:
-        print(click.style('ASG {} has no instances'.format(group), fg='red'))
+        ips = get_ip(stack_name, group, all=all, client=ctx.obj['client'])
+    except KeyError as e:
+        print(click.style(str(e), fg='red'))
         ctx.abort()
-
-    # create ec2 client to get instance dictionaries
-    ec2 = boto3.client('ec2')
-    for instance_dict in instance_ids:
-        instance_id = instance_dict['InstanceId']
-        instance = ec2.describe_instances(InstanceIds=[instance_id])
-        print(instance['Reservations'][0]['Instances'][0]
-              ['NetworkInterfaces'][0]['PrivateIpAddresses'][0]
-              ['Association']['PublicIp'])
-        if not all:
-            break
+    for ip in ips:
+        print(ip)
 
 
 @cli.command()
