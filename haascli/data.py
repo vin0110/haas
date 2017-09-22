@@ -138,9 +138,20 @@ def progress(ctx, stack_name):
 
 
 @cli.command()
+@click.argument('stack-name')
+@click.option('--regex', default='*', help='The regex (filename glob) to filter file path or workunit id')
 @click.pass_context
-def resize(ctx):
-    pass
+def resize(ctx, stack_name, regex):
+    topology = ClusterTopology.parse(stack_name)
+    conf = HaasConfigurationManager().get(ctx.obj['config'])
+    cmd = "python3 /opt/haas/resize.py '{}'".format(regex)
+
+    os.system("ssh -i {} -l {} {} 'echo {} | base64 -d | bash'".format(
+        conf.get(HaasConfigurationKey.HAAS_SSH_KEY),
+        conf.get(HaasConfigurationKey.HAAS_SSH_USER),
+        topology.get_master_ip(),
+        base64.b64encode(cmd.encode()).decode())
+    )
 
 
 def _wait_until_complete(master_ip, identity):

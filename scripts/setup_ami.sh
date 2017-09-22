@@ -38,7 +38,7 @@ HAAS_DIR=/opt/haas
 sudo mkdir $HAAS_DIR
 sudo chmod a+rwx $HAAS_DIR
 cd $HAAS_DIR
-for file in auto_hpcc.sh checkpoint.py /utils.py requirements.txt
+for file in auto_hpcc.sh checkpoint.py resize.py /utils.py requirements.txt
 do
     curl -s ${GIT_DIR}/${file} -O ${file}
 done
