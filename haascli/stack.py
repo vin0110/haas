@@ -16,24 +16,21 @@ logger = logging.getLogger(__name__)
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
-@click.option('-c', '--config', default='.')
 @click.pass_context
 def cli(ctx, **kwargs):
     """Stack related operations"""
-
-    optargs = {}
-    if ctx.obj['region']:
-        optargs['region_name'] = ctx.obj['region']
-    if ctx.obj['key']:
-        optargs['aws_access_key_id'] = ctx.obj['key']
-    if ctx.obj['secret']:
-        optargs['aws_secret_access_key_id'] = ctx.obj['secret']
-    if optargs:
-        logger.debug('aws settings:\n{}'.format(
-            '\n'.join(['{}={}'.format(k, v) for k, v in optargs.items()])))
-
     # open the client here instead of in all commands
     if ctx.obj['exec']:
+        optargs = {}
+        if ctx.obj['region']:
+            optargs['region_name'] = ctx.obj['region']
+        if ctx.obj['key']:
+            optargs['aws_access_key_id'] = ctx.obj['key']
+        if ctx.obj['secret']:
+            optargs['aws_secret_access_key_id'] = ctx.obj['secret']
+        if optargs:
+            logger.debug('aws settings:\n{}'.format(
+                '\n'.join(['{}={}'.format(k, v) for k, v in optargs.items()])))
         try:
             ctx.obj['client'] = boto3.client('cloudformation', **optargs)
         except (ClientError, PartialCredentialsError) as e:
@@ -51,8 +48,6 @@ def create(ctx, stack_name, config_file, parameter, wait):
     '''Creates an AWS stack'''
 
     logger.debug('haas stack create stack_name={}'.format(stack_name))
-    if not ctx.obj['exec']:
-        logger.warning('no exec mode')
 
     parameters = {}
     if config_file:
@@ -73,8 +68,8 @@ def create(ctx, stack_name, config_file, parameter, wait):
             try:
                 f = open(config_file, 'r')
             except IOError:
-                config_path = os.path.join(ctx.obj['config_dir'],
-                                           'config',
+                config_path = os.path.join(ctx.obj['haas_dir'],
+                                           ctx.obj['config_subdir'],
                                            config_file)
 
         if not f:
@@ -125,6 +120,10 @@ def create(ctx, stack_name, config_file, parameter, wait):
                  '\tCapabilities=[\'CAPABILITY_IAM\']'
                  .format(stack_name, template_url, parameter_list))
 
+    if not ctx.obj['exec']:
+        print('no executing `create stack {} {} {}`'.format(
+            stack_name, template_url, str(parameters)))
+
     try:
         client = ctx.obj['client']
         if template_url.startswith('http'):
@@ -168,6 +167,7 @@ def create(ctx, stack_name, config_file, parameter, wait):
         if bad_response(response):
             ctx.abort()
         if 'StackId' in response:
+            # sometimes stackid is not in response
             stack_id = response['StackId']
             print("StackId:", stack_id)
             logger.info('created stack %s (%s)', stack_name, stack_id)
@@ -209,6 +209,9 @@ def list(ctx, long, all, filter):
     '''Lists stacks
     '''
     logger.debug('haas stack list long={} filter={}'.format(long, filter))
+    if not ctx.obj['exec']:
+        print('not executing `stack list`')
+        ctx.exit(0)
 
     try:
         client = ctx.obj['client']
@@ -248,13 +251,15 @@ def delete(ctx, stack_name, wait):
     '''
     logger.debug('haas stack delete stack_name={}'.format(stack_name))
 
+    if not ctx.obj['exec']:
+        print('not executing `delete stack {}`'.format(stack_name))
+        ctx.exit(0)
     try:
         client = ctx.obj['client']
         response = client.delete_stack(StackName=stack_name)
         if wait:
             waiter = client.get_waiter('stack_delete_complete')
             waiter.wait(StackName=stack_name)
-
         if bad_response(response):
             ctx.abort()
     except ClientError as e:
@@ -284,7 +289,8 @@ def events(ctx, stack_name, follow):
             msg = click.style(msg, fg='red')
         print(msg)
 
-    logger.debug('haas stack delete stack_name={}'.format(stack_name))
+    if not ctx.obj['exec']:
+        ctx.exit(0)
 
     # Events might be delivered in more than one message, so use a
     # paginator
@@ -360,6 +366,8 @@ def get_ips(stack_name, group, all=False, client=None):
         if not all:
             break
     return ips
+
+get_master_ip = lambda stack_name: get_ips(stack_name, "MasterASG")[0]
 
 
 @cli.command()

@@ -1,7 +1,7 @@
 import click
 from executor.ssh.client import RemoteCommand
 
-from .stack import get_ips
+from .stack import get_master_ip
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
@@ -17,7 +17,7 @@ def cli(ctx, **kwargs):
 @click.pass_context
 def start(ctx, stack_name):
     # @TODO: a cache mechanism would be better
-    master_ip = get_ips(stack_name, "MasterASG")[0]
+    master_ip = get_master_ip(stack_name)
 
     # @TODO: after we finalize the AMI, we don't need to switch to the
     # user's directory
@@ -39,7 +39,7 @@ def start(ctx, stack_name):
 @click.argument('stack-name')
 @click.pass_context
 def stop(ctx, stack_name):
-    master_ip = get_ips(stack_name, "MasterASG")[0]
+    master_ip = get_master_ip(stack_name)
     RemoteCommand(
         master_ip,
         'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv stop"',
@@ -58,7 +58,7 @@ def stop(ctx, stack_name):
 @click.argument('stack-name')
 @click.pass_context
 def restart(ctx, stack_name):
-    master_ip = get_ips(stack_name, "MasterASG")[0]
+    master_ip = get_master_ip(stack_name)
     RemoteCommand(
         master_ip,
         'sudo bash -c '
@@ -79,7 +79,7 @@ def restart(ctx, stack_name):
 @click.argument('stack-name')
 @click.pass_context
 def status(ctx, stack_name):
-    master_ip = get_ips(stack_name, "MasterASG")[0]
+    master_ip = get_master_ip(stack_name)
     RemoteCommand(
         master_ip,
         'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv status"',

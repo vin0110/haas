@@ -7,6 +7,19 @@ __version__ = '0.0.1'
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_LOG = '/tmp/haas.log'
 
+#############
+# default values
+#############
+Defaults = dict(
+    rcfile='.haasrc',
+    haas_dir=os.path.join(os.path.expanduser('~'), '.haas'),
+    config_subdir='configurations',
+    region='us-east-1',
+    bucket='hpcc_checkpoint',
+    username='ubuntu',
+    )
+
+
 logger = logging.getLogger(__name__)
 
 # create console handler for error

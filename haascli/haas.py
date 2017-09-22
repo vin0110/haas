@@ -4,6 +4,7 @@ import logging
 import click
 
 import haascli
+from haascli import Defaults
 from haascli import cluster as haascli_cluster
 from haascli import stack as haascli_stack
 from haascli import data as haascli_data
@@ -16,20 +17,59 @@ from haascli import data as haascli_data
 #               default='aws')
 @click.option('--config_dir',
               type=click.Path(exists=True, resolve_path=True),
-              default=lambda: os.path.join(os.path.expanduser('~'), '.haas'),
-              help="The haas configuration directory")
-@click.option('--config', default='mycluster', help='The config name')
+              default=Defaults['haas_dir'],
+              help="The haas configuration directory (default: {})".format(
+                  Defaults['haas_dir']))
 @click.option('-L', '--log-file',
               help='set log file; default "{}"; "-" for stdout'
               .format(haascli.DEFAULT_LOG))
 @click.option('-i', '--identity', help="PEM file")
-@click.option('-r', '--region', help='AWS region name')
+@click.option('-u', '--username',
+              help="user name in AMI (default: {})".format(
+                  Defaults['username']))
+@click.option('-r', '--region',
+              help='AWS region name (default: {})'.format(Defaults['region']))
 @click.option('-k', '--key', help='AWS key')
 @click.option('-s', '--secret', help='AWS secret key')
 @click.pass_context
 def cli(ctx, **kwargs):
     """This is a command line tool for HPCC-as-a-Service (HaaS)
     """
+    # seed obj dict with defaults; then overwrite with rcfile; last
+    # overwrit with cmd-line params
+    try:
+        ctx.obj.update(Defaults)
+    except AttributeError:
+        # if obj is None
+        ctx.obj = Defaults
+
+    try:
+        rcfile = os.path.join(os.path.expanduser('~'), '.haasrc')
+        f = open(rcfile)
+        for n, line in enumerate(f.readlines()):
+            try:
+                key, val = line.split('=', 1)
+                key = key.strip()
+                if key in Defaults:
+                    val = val.strip()
+                    if val.lower() in ['t', 'true', 'yes', 'y']:
+                        ctx.obj[key] = True
+                    elif val.lower() in ['f', 'false', 'no', 'n']:
+                        ctx.obj[key] = False
+                    else:
+                        ctx.obj[key] = val
+                else:
+                    print(click.style('unknown parameter {} in rc file {} '
+                                      'at line {}'.format(
+                                          key, rcfile, n+1), fg='red'))
+                    ctx.abort()
+            except ValueError:
+                print(click.style('error in rc file {} at line {}'.format(
+                    rcfile, n+1), fg='red'))
+                ctx.abort()
+    except IOError:
+        # no rcfile; go on
+        pass
     ctx.obj = kwargs
 
     haascli.setup_logging(
