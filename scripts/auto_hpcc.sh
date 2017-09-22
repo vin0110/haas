@@ -50,5 +50,6 @@ rm -f ${tmp_config}
 /opt/HPCCSystems/sbin/envgen -env ${tmp_config} -ipfile ${host_file} \
 			     -thornodes ${thor_nodes}\
 			     -roxienodes ${roxie_nodes}\
-			     -supportnodes ${support_nodes}
+			     -supportnodes ${support_nodes}\
+			     -slavesPerNode ${slaves_per_node}
 cp ${tmp_config} /etc/HPCCSystems/environment.xml
