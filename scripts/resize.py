@@ -32,15 +32,16 @@ def generate_distribute_ecl(logical_filename, esp_ip):
     ecl_record = execute("sed -n '/<ECL/,/<\/ECL/p' {}".format(exported_xml), capture=True)
     ecl_record = ecl_record.replace('<ECL>', '').replace('</ECL>', '').replace('&#10;', '').strip()
 
+    # @TODO: not sure the following path prefix ~ will be applicable to all cases?
     file_format = 'CSV'
     ecl_code = '''IMPORT STD;
 layout := {ecl_record}
 
-ds := DATASET('{logical_filename}', layout,  {file_format});
-STD.File.DeleteLogicalFile('{logical_filename}.bak');
-OUTPUT(DISTRIBUTE(ds), ,'{logical_filename}.bak');
-STD.File.DeleteLogicalFile('{logical_filename}');
-STD.File.RenameLogicalFile('{logical_filename}.bak', '{logical_filename}');
+ds := DATASET('~{logical_filename}', layout,  {file_format});
+STD.File.DeleteLogicalFile('~{logical_filename}.bak');
+OUTPUT(DISTRIBUTE(ds), ,'~{logical_filename}.bak');
+STD.File.DeleteLogicalFile('~{logical_filename}');
+STD.File.RenameLogicalFile('~{logical_filename}.bak', '~{logical_filename}');
 '''.format(ecl_record=ecl_record, logical_filename=logical_filename, file_format=file_format)
 
     return ecl_code, target_cluster
