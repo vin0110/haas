@@ -323,7 +323,7 @@ def events(ctx, stack_name, follow):
             raise KeyError(e)
 
 
-def get_ip(stack_name, group, all=False, client=None):
+def get_ips(stack_name, group, all=False, client=None):
 
     # Must walk a very complex path of ids and dictionaries.
     # first get dictionary describing asg, from which we exact
@@ -354,9 +354,9 @@ def get_ip(stack_name, group, all=False, client=None):
     for instance_dict in instance_ids:
         instance_id = instance_dict['InstanceId']
         instance = ec2.describe_instances(InstanceIds=[instance_id])
-        ip.append(instance['Reservations'][0]['Instances'][0]
-                  ['NetworkInterfaces'][0]['PrivateIpAddresses'][0]
-                  ['Association']['PublicIp'])
+        ips.append(instance['Reservations'][0]['Instances'][0]
+                   ['NetworkInterfaces'][0]['PrivateIpAddresses'][0]
+                   ['Association']['PublicIp'])
         if not all:
             break
     return ips
@@ -374,7 +374,7 @@ def ip(ctx, stack_name, group, all):
     By default shows only the first instance in MasterASG.
     '''
     try:
-        ips = get_ip(stack_name, group, all=all, client=ctx.obj['client'])
+        ips = get_ips(stack_name, group, all=all, client=ctx.obj['client'])
     except KeyError as e:
         print(click.style(str(e), fg='red'))
         ctx.abort()

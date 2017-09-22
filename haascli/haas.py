@@ -22,6 +22,7 @@ from haascli import data as haascli_data
 @click.option('-L', '--log-file',
               help='set log file; default "{}"; "-" for stdout'
               .format(haascli.DEFAULT_LOG))
+@click.option('-i', '--identity', help="PEM file")
 @click.option('-r', '--region', help='AWS region name')
 @click.option('-k', '--key', help='AWS key')
 @click.option('-s', '--secret', help='AWS secret key')
@@ -36,7 +37,6 @@ def cli(ctx, **kwargs):
         file=kwargs['log_file'])
 
 
-cli.add_command(haascli_config.cli, name='config')
 cli.add_command(haascli_stack.cli, name='stack')
 cli.add_command(haascli_cluster.cli, name='cluster')
 cli.add_command(haascli_data.cli, name='data')

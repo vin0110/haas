@@ -5,14 +5,14 @@ import base64
 
 import click
 from executor.ssh.client import RemoteCommand
-from .stack import get_ip
+from .stack import get_ips
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_BUCKET = 'hpcc_checkpoint'
+
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
-@click.option('-b', '--bucket', default='hpcc_checkpoint')
-@click.option('-i', '--identity', help="PEM file")
 @click.option('--wait/--no-wait', default=True,
               help='Waiting for the operation to complete')
 @click.pass_context
@@ -20,9 +20,6 @@ def cli(ctx, **kwargs):
     """Data related operations
     """
     ctx.obj.update(kwargs)
-    if 'identity' not in kwargs:
-        print(click.style('need an identity file', fg='red'))
-        ctx.abort()
 
 
 @cli.command()
@@ -33,15 +30,22 @@ def cli(ctx, **kwargs):
 @click.option('--regex', default='*',
               help='The regex (filename glob) to filter file path or '
               'workunit id')
+@click.option('-b', '--bucket')
 @click.pass_context
-def save(ctx, stack_name, resource_name, checkpoint_name, regex):
+def save(ctx, stack_name, resource_name, checkpoint_name, regex, bucket):
     service_output = "/tmp/haas_data.out"
 
     # @TODO: if the required library is installed in system, the
     # init.sh can be removed @TODO: the path to checkpoint.py needs to
     # reflect the changes in auto_hpcc.sh
 
-    master_ip = get_ip(stack_name, "MasterASG")
+    master_ip = get_ips(stack_name, "MasterASG")[0]
+    if bucket == None:
+        try:
+            bucket = ctx.obj['bucket']
+        except KeyError:
+            # use defaul bucket
+            bucket = DEFAULT_BUCKET
 
     # didn't use RemoteCommand because I cannot make it work
     # base64 turns out to be an easy way to escape commands
@@ -50,15 +54,18 @@ def save(ctx, stack_name, resource_name, checkpoint_name, regex):
           "service_{} save --regex '{}' "\
           "> {} 2>&1 &)".format(
               checkpoint_name, resource_name, regex, service_output)
-    os.system("ssh -i {} -l {} {} 'echo {} | base64 -d | bash'".format(
-        ctx.obj['identity'],
-        'ubuntu',
-        master_ip,
-        base64.b64encode(cmd.encode()).decode())
-    )
+    if ctx.obj['exec']:
+        os.system("ssh -i {} -l {} {} 'echo {} | base64 -d | bash'".format(
+            ctx.obj['identity'],
+            'ubuntu',
+            master_ip,
+            base64.b64encode(cmd.encode()).decode())
+        )
 
-    if ctx.obj['wait']:
-        _wait_until_complete(master_ip, conf)
+        if ctx.obj['wait']:
+            _wait_until_complete(master_ip, ctx.obj['identity'])
+    else:
+        print('not executing `{}`'.format(cmd))
 
 
 @cli.command()
@@ -69,26 +76,37 @@ def save(ctx, stack_name, resource_name, checkpoint_name, regex):
 @click.option('--regex', default='*',
               help='The regex (filename glob) to filter file path or workunit '
               'id')
+@click.option('-b', '--bucket')
 @click.pass_context
-def restore(ctx, checkpoint_name, resource_name, stack_name, regex):
+def restore(ctx, checkpoint_name, resource_name, stack_name, regex, bucket):
     '''Restore data from S3'''
     service_output = "/tmp/haas_data.out"
-    master_ip = get_ip(stack_name, "MasterASG")
+    master_ip = get_ips(stack_name, "MasterASG")[0]
+
+    if bucket == None:
+        try:
+            bucket = ctx.obj['bucket']
+        except KeyError:
+            # use defaul bucket
+            bucket = DEFAULT_BUCKET
 
     cmd = "source /home/osr/haas/scripts/init.sh && "\
           "$(nohup python /home/osr/haas/scripts/checkpoint.py "\
           "--name {} service_{} restore --regex '{}' "\
           "> {} 2>&1 &)".format(
               checkpoint_name, resource_name, regex, service_output)
-    os.system("ssh {} 'echo {} | base64 -d | bash'".format(
-        ctx.obj['identity'],
-        'ubuntu',
-        master_ip,
-        base64.b64encode(cmd.encode()).decode())
-    )
+    if ctx.obj['exec']:
+        os.system("ssh {} 'echo {} | base64 -d | bash'".format(
+            ctx.obj['identity'],
+            'ubuntu',
+            master_ip,
+            base64.b64encode(cmd.encode()).decode())
+        )
 
-    if ctx.obj['wait']:
-        _wait_until_complete(master_ip, ctx.obj['identity'])
+        if ctx.obj['wait']:
+            _wait_until_complete(master_ip, ctx.obj['identity'])
+    else:
+        print('not executing `{}`'.format(cmd))
 
 
 @cli.command()
@@ -96,7 +114,7 @@ def restore(ctx, checkpoint_name, resource_name, stack_name, regex):
 @click.pass_context
 def progress(ctx, stack_name):
     '''Check progress of checkpointing operation'''
-    master_ip = get_ip(stack_name, "MasterASG")
+    master_ip = get_ips(stack_name, "MasterASG")[0]
 
     cmd = RemoteCommand(master_ip,
                         'source ~/haas/scripts/init.sh; '
@@ -105,15 +123,18 @@ def progress(ctx, stack_name):
                         identity_file=ctx.obj['identity'],
                         ssh_user='ubuntu',
                         capture=True)
-    cmd.start()
-    if cmd.output == '0':
-        print("No service is running")
+    if ctx.obj['exec']:
+        cmd.start()
+        if cmd.output == '0':
+            print("No service is running")
+        else:
+            print('Data service is running....')
+            RemoteCommand(master_ip, "tail -f /tmp/haas_data.out",
+                          identity_file=ctx.obj['identity'],
+                          ssh_user='ubuntu',
+                          check=False).start()
     else:
-        print('Data service is running....')
-        RemoteCommand(master_ip, "tail -f /tmp/haas_data.out",
-                      identity_file=ctx.obj['identity'],
-                      ssh_user='ubuntu',
-                      check=False).start()
+        print('not executing `{}`'.format(cmd.command))
 
 
 @cli.command()
