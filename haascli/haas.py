@@ -1,4 +1,3 @@
-import os
 import logging
 
 import click
@@ -22,7 +21,7 @@ from haascli import data as haascli_data
                   Defaults['haas_dir']))
 @click.option('-L', '--log-file',
               help='set log file; default "{}"; "-" for stdout'
-              .format(haascli.DEFAULT_LOG))
+              .format(Defaults['log_file']))
 @click.option('-i', '--identity', help="PEM file")
 @click.option('-u', '--username',
               help="user name in AMI (default: {})".format(
@@ -42,10 +41,14 @@ def cli(ctx, **kwargs):
     except AttributeError:
         # if obj is None
         ctx.obj = Defaults
+        ctx.obj['d'] = 'f'
+    # conditional update; do not update if none
+    for k, v in kwargs.items():
+        if v:
+            ctx.obj[k] = v
 
     try:
-        rcfile = os.path.join(os.path.expanduser('~'), '.haasrc')
-        f = open(rcfile)
+        f = open(haascli.RCFILE)
         for n, line in enumerate(f.readlines()):
             try:
                 key, val = line.split('=', 1)
@@ -61,20 +64,19 @@ def cli(ctx, **kwargs):
                 else:
                     print(click.style('unknown parameter {} in rc file {} '
                                       'at line {}'.format(
-                                          key, rcfile, n+1), fg='red'))
+                                          key, haascli.RCFILE, n+1), fg='red'))
                     ctx.abort()
             except ValueError:
                 print(click.style('error in rc file {} at line {}'.format(
-                    rcfile, n+1), fg='red'))
+                    haascli.RCFILE, n+1), fg='red'))
                 ctx.abort()
     except IOError:
         # no rcfile; go on
         pass
-    ctx.obj = kwargs
 
     haascli.setup_logging(
         level=logging.DEBUG if kwargs['debug'] else logging.INFO,
-        file=kwargs['log_file'])
+        file=ctx.obj['log_file'])
 
 
 cli.add_command(haascli_stack.cli, name='stack')

@@ -57,7 +57,7 @@ def save(ctx, stack_name, resource_name, checkpoint_name, regex, bucket):
     if ctx.obj['exec']:
         os.system("ssh -i {} -l {} {} 'echo {} | base64 -d | bash'".format(
             ctx.obj['identity'],
-            'ubuntu',
+            ctx.obj['username'],
             master_ip,
             base64.b64encode(cmd.encode()).decode())
         )
@@ -98,7 +98,7 @@ def restore(ctx, checkpoint_name, resource_name, stack_name, regex, bucket):
     if ctx.obj['exec']:
         os.system("ssh {} 'echo {} | base64 -d | bash'".format(
             ctx.obj['identity'],
-            'ubuntu',
+            ctx.obj['username'],
             master_ip,
             base64.b64encode(cmd.encode()).decode())
         )
@@ -121,7 +121,7 @@ def progress(ctx, stack_name):
                         'python /home/osr/haas/scripts/checkpoint.py '
                         '--name {} available; echo $?',
                         identity_file=ctx.obj['identity'],
-                        ssh_user='ubuntu',
+                        ssh_user=ctx.obj['username'],
                         capture=True)
     if ctx.obj['exec']:
         cmd.start()
@@ -131,7 +131,7 @@ def progress(ctx, stack_name):
             print('Data service is running....')
             RemoteCommand(master_ip, "tail -f /tmp/haas_data.out",
                           identity_file=ctx.obj['identity'],
-                          ssh_user='ubuntu',
+                          ssh_user=ctx.obj['username'],
                           check=False).start()
     else:
         print('not executing `{}`'.format(cmd.command))
@@ -152,7 +152,7 @@ def resize(ctx, stack_name, regex):
     if ctx.obj['exec']:
         os.system("ssh -i {} -l {} {} 'echo {} | base64 -d | bash'".format(
             ctx.obj['identity'],
-            'ubuntu',
+            ctx.obj['username'],
             master_ip,
             base64.b64encode(cmd.encode()).decode())
         )
@@ -166,7 +166,7 @@ def _wait_until_complete(master_ip, identity):
     while True:
         cmd = RemoteCommand(master_ip, "pgrep -f checkpoint.py",
                             identity_file=identity,
-                            ssh_user='ubuntu',
+                            ssh_user=ctx.obj['username'],
                             capture=True, check=False)
         cmd.start()
         pid_list = cmd.output
