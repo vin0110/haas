@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# extract configuration parameters
-thor_nodes=$1
-roxie_nodes=$2
-support_nodes=$3
-slaves_per_node=$4
-
 echo Setup AMI ${thor_nodes} ${roxie_nodes} ${support_nodes} ${slaves_per_node}
 
 
@@ -46,7 +40,3 @@ done
 # install python libraries needed for checkpoint
 sudo pip3 install -r requirements.txt
 rm -f requirements.txt
-
-# create environment.xml file
-sudo bash ./auto_hpcc.sh ${thor_nodes} ${roxie_nodes} ${support_nodes}\
-     ${slaves_per_node}
