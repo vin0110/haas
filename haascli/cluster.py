@@ -1,94 +1,81 @@
 import click
 from executor.ssh.client import RemoteCommand
 
-from .stack import get_ips
+from .stack import get_master_ip
 
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
 @click.pass_context
 def cli(ctx, **kwargs):
-    """Cluster related operations
-    """
+    """Cluster related operations"""
     ctx.obj.update(kwargs)
+    if 'identity' not in ctx.obj:
+        print(click.style('must provide an identity file', fg='red'))
+        ctx.abort()
+
+
+def _run_service(ctx, stack_name, service):
+    if ctx.obj['test']:
+        master_ip = '127.0.0.1'
+    else:
+        # @TODO: a cache mechanism would be better
+        try:
+            master_ip = get_master_ip(stack_name)
+        except KeyError as e:
+            print(click.style(str(e), fg='red'))
+            ctx.abort()
+
+    # @TODO: after we finalize the AMI, we don't need to switch to the
+    # user's directory
+    cmd = RemoteCommand(
+        master_ip,
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a '
+        'dafilesrv {}"'.format(service),
+        identity_file=ctx.obj['identity'],
+        ssh_user=ctx.obj['username'],
+    )
+    cmd2 = RemoteCommand(
+        master_ip,
+        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a '
+        'hpcc-init {}"'.format(service),
+        identity_file=ctx.obj['identity'],
+        ssh_user=ctx.obj['username'],
+    )
+    if ctx.obj['test']:
+        print('not executing `{}`'.format(cmd.command_line))
+        print('not executing `{}`'.format(cmd2.command_line))
+    else:
+        cmd.start()
+        cmd2.start()
 
 
 @cli.command()
 @click.argument('stack-name')
 @click.pass_context
 def start(ctx, stack_name):
-    # @TODO: a cache mechanism would be better
-    master_ip = get_ips(stack_name, "MasterASG")[0]
-
-    # @TODO: after we finalize the AMI, we don't need to switch to the
-    # user's directory
-    RemoteCommand(
-        master_ip,
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv start"',
-        identity_file=ctx.obj['identity'],
-        ssh_user='ubuntu'
-    ).start()
-    RemoteCommand(
-        master_ip,
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init start"',
-        identity_file=ctx.obj['identity'],
-        ssh_user='ubuntu'
-    ).start()
+    '''Start hPCC service on the cluster.'''
+    _run_service(ctx, stack_name, 'start')
 
 
 @cli.command()
 @click.argument('stack-name')
 @click.pass_context
 def stop(ctx, stack_name):
-    master_ip = get_ips(stack_name, "MasterASG")[0]
-    RemoteCommand(
-        master_ip,
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv stop"',
-        identity_file=ctx.obj['identity'],
-        ssh_user='ubuntu'
-    ).start()
-    RemoteCommand(
-        master_ip,
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init stop"',
-        identity_file=ctx.obj['identity'],
-        ssh_user='ubuntu'
-    ).start()
+    '''Stop HPCC services on the cluster.'''
+    _run_service(ctx, stack_name, 'stop')
 
 
 @cli.command()
 @click.argument('stack-name')
 @click.pass_context
 def restart(ctx, stack_name):
-    master_ip = get_ips(stack_name, "MasterASG")[0]
-    RemoteCommand(
-        master_ip,
-        'sudo bash -c '
-        '"/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv restart"',
-        identity_file=ctx.obj['identity'],
-        ssh_user='ubuntu'
-    ).start()
-    RemoteCommand(
-        master_ip,
-        'sudo bash -c '
-        '"/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init restart"',
-        identity_file=ctx.obj['identity'],
-        ssh_user='ubuntu'
-    ).start()
+    '''Restart HPCC services on the cluster.'''
+    _run_service(ctx, stack_name, 'stop')
 
 
 @cli.command()
 @click.argument('stack-name')
 @click.pass_context
 def status(ctx, stack_name):
-    master_ip = get_ips(stack_name, "MasterASG")[0]
-    RemoteCommand(
-        master_ip,
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a dafilesrv status"',
-        identity_file=ctx.obj['identity'],
-        ssh_user='ubuntu'
-    ).start()
-    RemoteCommand(
-        master_ip,
-        'sudo bash -c "/opt/HPCCSystems/sbin/hpcc-run.sh -a hpcc-init status"',
-        identity_file=ctx.obj['identity'],
-        ssh_user='ubuntu'
-    ).start()
+    '''Show status of the HPCC services.'''
+    _run_service(ctx, stack_name, 'status')
