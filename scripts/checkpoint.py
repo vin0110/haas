@@ -4,6 +4,7 @@ import glob
 import hashlib
 import re
 import fnmatch
+import base64
 
 from executor import execute
 
@@ -115,9 +116,11 @@ def workunit(op, bucket, checkpoint, regex):
 
     # @TODO: should we use shorter prefex?
     output_name = generate_hash("{}-workunits.tar.gz".format(checkpoint))
-    output_path = os.path.join('/tmp', checkpoint, output_name)
+    output_dir = os.path.join('/tmp', checkpoint)
+    execute("mkdir -p {}".format(output_dir))
+    output_path = os.path.join(output_dir, output_name)
 
-    workspace_dir = os.path.join('/tmp', checkpoint, 'workunits')
+    workspace_dir = os.path.join(output_dir, 'workunits')
     execute("mkdir -p {}".format(workspace_dir))
 
     pattern = re.compile(fnmatch.translate(regex))
@@ -173,12 +176,16 @@ def dropzone(op, bucket, checkpoint, regex):
         return -1
 
     output_name = generate_hash("{}-dropzone.tar.gz".format(checkpoint))
-    output_path = os.path.join('/tmp', checkpoint, output_name)
+    output_dir = os.path.join('/tmp', checkpoint)
+    execute("mkdir -p {}".format(output_dir))
+    output_path = os.path.join(output_dir, output_name)
 
     if op == 'save':
         print("Creating {} from {}".format(output_path, DROPZONE_DIR))
-        execute("cd {}; find . -name '{}' | tar zcf {} -C . --files-from -"
-                .format(DROPZONE_DIR, regex, output_path))
+        # support both regular files and symbolic links
+        cmd = "cd {}; find . -type f -or -type l -name '{}' | tar zcf {} -C . --dereference --files-from -".format(
+            DROPZONE_DIR, regex, output_path)
+        execute("echo {} | base64 -d | bash".format(base64.b64encode(cmd.encode()).decode()))
         print("Created {}".format(output_path))
         # it uses multiparts uploadby default
         # http://docs.aws.amazon.com/cli/latest/userguide/using-s3-commands.html
@@ -213,13 +220,18 @@ def dfs(op, bucket, checkpoint, regex):
 
     output_name = generate_hash("{}-files{}.tar.gz".format(
         checkpoint, node_index))
-    output_path = os.path.join('/tmp', checkpoint, output_name)
+    output_dir = os.path.join('/tmp', checkpoint)
+    execute('mkdir -p {}'.format(output_dir))
+    output_path = os.path.join(output_dir, output_name)
 
     # filter out
     if op == 'save':
         print("Creating {} from {}".format(output_path, DFS_DIR))
-        execute("cd {}; find . -name '{}' | tar zcf {} -C . --files-from -"
-                .format(DFS_DIR, regex, output_path))
+        # list only files but not directories
+        cmd = "cd {}; find . -type f -name '{}' | tar zcf {} -C . --files-from -".format(DFS_DIR, regex, output_path)
+        execute("echo {} | base64 -d | bash".format(base64.b64encode(cmd.encode()).decode()))
+        #execute("cd {}; find . -type f -name '{}' | tar zcf {} -C . --files-from -"
+        #        .format(DFS_DIR, regex, output_path))
         print("Created {}".format(output_path))
         print("Copying {} to s3 at {}".format(output_path, bucket))
         execute("aws s3 cp {} s3://{}".format(output_path, bucket))
@@ -231,9 +243,9 @@ def dfs(op, bucket, checkpoint, regex):
                                                  output_path))
         print("Copied {}".format(output_path))
         # @TODO: the original user attributes are kept
-        execute("sudo mkdir -p {}".format(DFS_DIR))
+        execute("mkdir -p {}".format(DFS_DIR))
         print("Extracting {} to {}".format(output_path, DFS_DIR))
-        execute("sudo tar zxf {} -C {} --no-overwrite-dir".format(output_path,
+        execute("tar zxf {} -C {} --no-overwrite-dir".format(output_path,
                                                                   DFS_DIR))
         print("Extracted {}".format(output_path))
 
@@ -333,9 +345,10 @@ def available():
 def service_workunit(op, bucket, checkpoint, regex):
     try:
         print("Workunit service is running")
-        CheckpointService.run("python /opt/haas/checkpoint.py "
-                              "wu {} {} {} '{}'"
-                              .format(op, bucket, checkpoint, regex))
+        return workunit(op, bucket, checkpoint, regex)
+        #CheckpointService.run("python /opt/haas/checkpoint.py "
+        #                      "wu {} {} {} '{}'"
+        #                      .format(op, bucket, checkpoint, regex))
     except Exception:
         import traceback
         traceback.print_exc()
@@ -368,43 +381,16 @@ def service_dfs(op, bucket, checkpoint, regex):
     print("CheckpointService is performing the {} operation on the dfs "
           "component".format(op))
 
-    if op == 'save':
-        with CommandAgent(concurrency=len(node_list)+1) as agent:
-            for node_ip in node_list:
-                agent.submit_remote_command(
-                    node_ip,
-                    "python /opt/haas/checkpoint.py dfs {} {} '{}' "
-                    ">> {}".format(
-                        op, bucket, checkpoint, regex,
-                        CheckpointService.service_output),
-                    cid='slave_{}'.format(node_ip)
-                )
-            # agent.submit_remote_command(
-            #     lookup_private_ip(),
-            #     "source ~/haas/scripts/init.sh; "
-            #     "python ~/haas/scripts/checkpoint.py --name {} "
-            #     "dali_metadata {} --regex '{}'>> {}".format(
-            #         ctx.obj['name'], op, regex,
-            #         CheckpointService.service_output),
-            #     cid='master_{}'.format(lookup_private_ip())
-            # )
-
-        dali_metadata(op, bucket, checkpoint, regex)
-        for cid, cmd in agent.items():
-            pass
-    elif op == 'restore':
-        with CommandAgent(concurrency=len(node_list) + 1) as agent:
-            for node_ip in node_list:
-                agent.submit_remote_command(
-                    node_ip,
-                    "python /opt/haas/checkpoint.py dfs {} {} {} '{}'"
-                    .format(op, bucket, checkpoint, regex),
-                    cid='slave_{}'.format(node_ip)
-                )
-        # the metadata restore operation can be run only after DFS files
-        # are restored
-        dali_metadata(op, bucket, checkpoint, regex)
-
+    with CommandAgent(concurrency=len(node_list)+1) as agent:
+        for node_ip in node_list:
+            cmd = "python3 /opt/haas/checkpoint.py slave_dfs {} {} {} '{}' >> {}".format(
+                                     op, bucket, checkpoint, regex, CheckpointService.service_output)
+            agent.submit_command("ssh -i /home/hpcc/.ssh/id_rsa {}".format(node_ip) +
+                                 " -o StrictHostKeyChecking=no" +
+                                 " 'echo {} | base64 -d | bash'".format(base64.b64encode(cmd.encode()).decode()),
+                                 user='hpcc', sudo=True
+                                 )
+    dali_metadata(op, bucket, checkpoint, regex)
     exit(0)
 
 
@@ -422,7 +408,7 @@ def main():
     what, op, bucket, checkpoint, regex = sys.argv[1:]
 
     try:
-        assert what in ['dfs', 'wu', 'dz']
+        assert what in ['dfs', 'wu', 'dz', 'slave_dfs']
         assert op in ['save', 'restore']
     except AssertionError:
         exit(-1)
@@ -433,6 +419,8 @@ def main():
         service_workunit(op, bucket, checkpoint, regex)
     elif what == 'dz':
         service_dropzone(op, bucket, checkpoint, regex)
+    elif what == 'slave_dfs':
+        dfs(op, bucket, checkpoint, regex)
     else:
         # cannot get here; exit anyway
         exit(-1)
