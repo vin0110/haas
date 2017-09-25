@@ -33,6 +33,7 @@ def cli(ctx, **kwargs):
 @click.option('-b', '--bucket')
 @click.pass_context
 def save(ctx, stack_name, resource_name, checkpoint_name, regex, bucket):
+    '''Save data to S3'''
     service_output = "/tmp/haas_data.out"
 
     # @TODO: if the required library is installed in system, the
@@ -63,7 +64,8 @@ def save(ctx, stack_name, resource_name, checkpoint_name, regex, bucket):
         )
 
         if ctx.obj['wait']:
-            _wait_until_complete(master_ip, ctx.obj['identity'])
+            _wait_until_complete(master_ip, ctx.obj['identity'],
+                                 ctx.obj['username'])
     else:
         print('not executing `{}`'.format(cmd))
 
@@ -104,7 +106,8 @@ def restore(ctx, checkpoint_name, resource_name, stack_name, regex, bucket):
         )
 
         if ctx.obj['wait']:
-            _wait_until_complete(master_ip, ctx.obj['identity'])
+            _wait_until_complete(master_ip, ctx.obj['identity'],
+                                 ctx.obj['username'])
     else:
         print('not executing `{}`'.format(cmd))
 
@@ -159,14 +162,15 @@ def resize(ctx, stack_name, regex):
             base64.b64encode(cmd.encode()).decode())
         )
         if ctx.obj['wait']:
-            _wait_until_complete(master_ip, ctx.obj['identity'])
+            _wait_until_complete(master_ip, ctx.obj['identity'],
+                                 ctx.obj['username'])
 
 
-def _wait_until_complete(master_ip, identity):
+def _wait_until_complete(master_ip, identity, username):
     while True:
         cmd = RemoteCommand(master_ip, "pgrep -f checkpoint.py",
                             identity_file=identity,
-                            ssh_user=ctx.obj['username'],
+                            ssh_user=username,
                             capture=True, check=False)
         cmd.start()
         pid_list = cmd.output
