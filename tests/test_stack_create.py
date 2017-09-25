@@ -84,7 +84,7 @@ class TestStackCreate(unittest.TestCase):
     @mock_cloudformation
     def test_create_with_file(self):
         fn = os.path.join('tests', 'config.yaml')
-        r = self.runner.invoke(cli, ['--config_dir', ROOT_DIR,
+        r = self.runner.invoke(cli, ['--haas_dir', ROOT_DIR,
                                      'stack', 'create', 'tank', '-f', fn])
         # @@@ why this exit_code?
         # @@@ exit_code seems to be arbitrary
@@ -97,7 +97,7 @@ class TestStackCreate(unittest.TestCase):
     @mock_cloudformation
     def test_create_with_file_absolute_path(self):
         fn = os.path.join(ROOT_DIR, 'tests', 'config.yaml')
-        r = self.runner.invoke(cli, ['--config_dir', ROOT_DIR,
+        r = self.runner.invoke(cli, ['--haas_dir', ROOT_DIR,
                                      'stack', 'create', 'tank', '-f', fn])
         # @@@ why this exit_code?
         # @@@ exit_code seems to be arbitrary

@@ -11,10 +11,8 @@ from haascli import data as haascli_data
 
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
 @click.option('--debug/--no-debug', default=False)
-@click.option('--exec/--no-exec', default=True)
-# @click.option('--provider', type=click.Choice(['aws', 'azure']),
-#               default='aws')
-@click.option('--config_dir',
+@click.option('--test/--no-test', default=False)
+@click.option('--haas_dir',
               type=click.Path(exists=True, resolve_path=True),
               default=Defaults['haas_dir'],
               help="The haas configuration directory (default: {})".format(
@@ -49,7 +47,9 @@ def cli(ctx, **kwargs):
 
     try:
         f = open(haascli.RCFILE)
-        for n, line in enumerate(f.readlines()):
+        lines = f.readlines()
+        f.close()
+        for n, line in enumerate(lines):
             try:
                 key, val = line.split('=', 1)
                 key = key.strip()

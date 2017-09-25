@@ -20,13 +20,15 @@ logger = logging.getLogger(__name__)
 def cli(ctx, **kwargs):
     """Stack related operations"""
     # open the client here instead of in all commands
-    if ctx.obj['exec']:
+    if not ctx.obj['test']:
+        # do not create client for test mode; double check to make
+        # sure that ntohing is executed
         optargs = {}
-        if ctx.obj['region']:
+        if 'region' in ctx.obj and ctx.obj['region']:
             optargs['region_name'] = ctx.obj['region']
-        if ctx.obj['key']:
+        if 'key' in ctx.obj and ctx.obj['key']:
             optargs['aws_access_key_id'] = ctx.obj['key']
-        if ctx.obj['secret']:
+        if 'secret' in ctx.obj and ctx.obj['secret']:
             optargs['aws_secret_access_key_id'] = ctx.obj['secret']
         if optargs:
             logger.debug('aws settings:\n{}'.format(
@@ -68,9 +70,7 @@ def create(ctx, stack_name, config_file, parameter, wait):
             try:
                 f = open(config_file, 'r')
             except IOError:
-                config_path = os.path.join(ctx.obj['haas_dir'],
-                                           ctx.obj['config_subdir'],
-                                           config_file)
+                config_path = os.path.join(ctx.obj['haas_dir'], config_file)
 
         if not f:
             try:
@@ -83,6 +83,7 @@ def create(ctx, stack_name, config_file, parameter, wait):
                 ctx.abort()
         yaml = YAML()
         parameters = yaml.load(f)
+        f.close()
 
     for param in parameter:
         try:
@@ -120,9 +121,10 @@ def create(ctx, stack_name, config_file, parameter, wait):
                  '\tCapabilities=[\'CAPABILITY_IAM\']'
                  .format(stack_name, template_url, parameter_list))
 
-    if not ctx.obj['exec']:
+    if ctx.obj['test']:
         print('no executing `create stack {} {} {}`'.format(
             stack_name, template_url, str(parameters)))
+        ctx.exit(0)
 
     try:
         client = ctx.obj['client']
@@ -209,7 +211,7 @@ def list(ctx, long, all, filter):
     '''Lists stacks
     '''
     logger.debug('haas stack list long={} filter={}'.format(long, filter))
-    if not ctx.obj['exec']:
+    if ctx.obj['test']:
         print('not executing `stack list`')
         ctx.exit(0)
 
@@ -227,7 +229,7 @@ def list(ctx, long, all, filter):
                 continue
             print("%-30s %s" % (stack['StackName'], stack['StackStatus'], ))
             if long:
-                print('\tTemplate:', stack['TemplateDescription'])
+                # print('\tTemplate:', stack['TemplateDescription'])
                 print('\tId:', stack['StackId'])
                 print('\tCreated:', str(stack['CreationTime']))
                 if 'DeletionTime' in stack:
@@ -251,7 +253,7 @@ def delete(ctx, stack_name, wait):
     '''
     logger.debug('haas stack delete stack_name={}'.format(stack_name))
 
-    if not ctx.obj['exec']:
+    if ctx.obj['test']:
         print('not executing `delete stack {}`'.format(stack_name))
         ctx.exit(0)
     try:
@@ -289,7 +291,7 @@ def events(ctx, stack_name, follow):
             msg = click.style(msg, fg='red')
         print(msg)
 
-    if not ctx.obj['exec']:
+    if ctx.obj['test']:
         ctx.exit(0)
 
     # Events might be delivered in more than one message, so use a
@@ -341,7 +343,7 @@ def get_ips(stack_name, group, all=False, client=None):
         myasg = client.describe_stack_resource(
             StackName=stack_name, LogicalResourceId=asg_name)
     except ClientError as e:
-        raise KeyError(e)
+        raise KeyError(str(e))
 
     # create an ASG client to get group dictionaries, from which we
     # exact the ec2 instance ids

@@ -54,7 +54,7 @@ def save(ctx, stack_name, resource_name, checkpoint_name, regex, bucket):
           "service_{} save --regex '{}' "\
           "> {} 2>&1 &)".format(
               checkpoint_name, resource_name, regex, service_output)
-    if ctx.obj['exec']:
+    if not ctx.obj['test']:
         os.system("ssh -i {} -l {} {} 'echo {} | base64 -d | bash'".format(
             ctx.obj['identity'],
             ctx.obj['username'],
@@ -95,7 +95,7 @@ def restore(ctx, checkpoint_name, resource_name, stack_name, regex, bucket):
           "--name {} service_{} restore --regex '{}' "\
           "> {} 2>&1 &)".format(
               checkpoint_name, resource_name, regex, service_output)
-    if ctx.obj['exec']:
+    if not ctx.obj['test']:
         os.system("ssh {} 'echo {} | base64 -d | bash'".format(
             ctx.obj['identity'],
             ctx.obj['username'],
@@ -123,7 +123,9 @@ def progress(ctx, stack_name):
                         identity_file=ctx.obj['identity'],
                         ssh_user=ctx.obj['username'],
                         capture=True)
-    if ctx.obj['exec']:
+    if ctx.obj['test']:
+        print('not executing `{}`'.format(cmd.command))
+    else:
         cmd.start()
         if cmd.output == '0':
             print("No service is running")
@@ -133,8 +135,6 @@ def progress(ctx, stack_name):
                           identity_file=ctx.obj['identity'],
                           ssh_user=ctx.obj['username'],
                           check=False).start()
-    else:
-        print('not executing `{}`'.format(cmd.command))
 
 
 @cli.command()
@@ -149,7 +149,9 @@ def resize(ctx, stack_name, regex):
     master_ip = get_master_ip(stack_name)
     cmd = "python3 /opt/haas/resize.py '{}'".format(regex)
 
-    if ctx.obj['exec']:
+    if ctx.obj['test']:
+        print('not executing `{}`'.format(cmd))
+    else:
         os.system("ssh -i {} -l {} {} 'echo {} | base64 -d | bash'".format(
             ctx.obj['identity'],
             ctx.obj['username'],
@@ -158,8 +160,6 @@ def resize(ctx, stack_name, regex):
         )
         if ctx.obj['wait']:
             _wait_until_complete(master_ip, ctx.obj['identity'])
-    else:
-        print('not executing `{}`'.format(cmd))
 
 
 def _wait_until_complete(master_ip, identity):

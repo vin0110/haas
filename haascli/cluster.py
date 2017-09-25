@@ -15,11 +15,15 @@ def cli(ctx, **kwargs):
 
 
 def _run_service(ctx, stack_name, service):
-    if not ctx.obj['exec']:
+    if ctx.obj['test']:
         master_ip = '127.0.0.1'
     else:
         # @TODO: a cache mechanism would be better
-        master_ip = get_master_ip(stack_name)
+        try:
+            master_ip = get_master_ip(stack_name)
+        except KeyError as e:
+            print(click.style(str(e), fg='red'))
+            ctx.abort()
 
     # @TODO: after we finalize the AMI, we don't need to switch to the
     # user's directory
@@ -37,12 +41,12 @@ def _run_service(ctx, stack_name, service):
         identity_file=ctx.obj['identity'],
         ssh_user=ctx.obj['username'],
     )
-    if ctx.obj['exec']:
-        cmd.start()
-        cmd2.start()
-    else:
+    if ctx.obj['test']:
         print('not executing `{}`'.format(cmd.command_line))
         print('not executing `{}`'.format(cmd2.command_line))
+    else:
+        cmd.start()
+        cmd2.start()
 
 
 @cli.command()

@@ -10,14 +10,19 @@ RCFILE = os.path.join(os.path.expanduser('~'), '.haasrc')
 
 #############
 # default values
+# any key that is allowable in the rcfile, must be defined in this dict.
 #############
 Defaults = dict(
     haas_dir=os.path.join(os.path.expanduser('~'), '.haas'),
-    config_subdir='configurations',
     region='us-east-1',
     bucket='hpcc_checkpoint',
     username='ubuntu',
     log_file=DEFAULT_LOG,
+    identity=RCFILE,
+    key=None,
+    secret=None,
+    debug=None,
+    test=None,
     )
 
 
