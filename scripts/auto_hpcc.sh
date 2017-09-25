@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# this script should only be executed by the user hpcc
+
 # grab parameters
 thor_nodes=$1
 roxie_nodes=$2
@@ -44,9 +46,10 @@ cat ${host_file}
 
 # generate the configuration file for HPCC
 tmp_config=/tmp/environment.xml
+rm -f ${tmp_config}
 /opt/HPCCSystems/sbin/envgen -env ${tmp_config} -ipfile ${host_file} \
 			     -thornodes ${thor_nodes}\
 			     -roxienodes ${roxie_nodes}\
 			     -supportnodes ${support_nodes}\
 			     -slavesPerNode ${slaves_per_node}
-sudo cp ${tmp_config} /etc/HPCCSystems/environment.xml
+cp ${tmp_config} /etc/HPCCSystems/environment.xml

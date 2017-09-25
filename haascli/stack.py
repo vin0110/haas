@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 @click.pass_context
 def cli(ctx, **kwargs):
     """Stack related operations"""
-
     optargs = {}
     if ctx.obj['region']:
         optargs['region_name'] = ctx.obj['region']
@@ -323,7 +322,7 @@ def events(ctx, stack_name, follow):
             raise KeyError(e)
 
 
-def get_ips(stack_name, group, all=False, client=None):
+def get_ips(stack_name, group, all=False, client=None, public=True):
 
     # Must walk a very complex path of ids and dictionaries.
     # first get dictionary describing asg, from which we exact
@@ -354,9 +353,14 @@ def get_ips(stack_name, group, all=False, client=None):
     for instance_dict in instance_ids:
         instance_id = instance_dict['InstanceId']
         instance = ec2.describe_instances(InstanceIds=[instance_id])
-        ips.append(instance['Reservations'][0]['Instances'][0]
-                   ['NetworkInterfaces'][0]['PrivateIpAddresses'][0]
-                   ['Association']['PublicIp'])
+        if public:
+            ips.append(instance['Reservations'][0]['Instances'][0]
+                       ['NetworkInterfaces'][0]['PrivateIpAddresses'][0]
+                       ['Association']['PublicIp'])
+        else:
+            ips.append(instance['Reservations'][0]['Instances'][0]
+                       ['NetworkInterfaces'][0]['PrivateIpAddresses'][0]
+                       ['PrivateIpAddress'])
         if not all:
             break
     return ips
@@ -368,13 +372,15 @@ def get_ips(stack_name, group, all=False, client=None):
               help='name of auto-scaling group (default: "MasterASG")')
 @click.option('-a', '--all', is_flag=True,
               help="show al ips")
+@click.option('--public/--private', is_flag=True,
+              help='the public or private ip')
 @click.pass_context
-def ip(ctx, stack_name, group, all):
+def ip(ctx, stack_name, group, all, public):
     '''Return public IP address for EC2 instances.
     By default shows only the first instance in MasterASG.
     '''
     try:
-        ips = get_ips(stack_name, group, all=all, client=ctx.obj['client'])
+        ips = get_ips(stack_name, group, all=all, client=ctx.obj['client'], public=public)
     except KeyError as e:
         print(click.style(str(e), fg='red'))
         ctx.abort()
@@ -405,6 +411,31 @@ def resources(ctx, stack_name, long):
 
     for resource in resources:
         print(fmt.format(**resource))
+
+
+@cli.command()
+@click.argument('stack-name')
+@click.pass_context
+def parameters(ctx, stack_name):
+    '''Show stack parameters'''
+
+    res = ctx.obj['client'].describe_stacks(StackName=stack_name)
+    stack = res['Stacks'][0]
+
+    params = {p['ParameterKey']: p['ParameterValue'] for p in stack['Parameters']}
+    fmt = "ClusterSize: {ClusterSize}\n" \
+          "ThorNodes: {ThorNodes}\n" \
+          "RoxieNodes: {RoxieNodes}\n" \
+          "SupportNodes: {SupportNodes}\n" \
+          "SlavesPerNode: {SlavesPerNode}\n" \
+          "AMIId: {AMIId}\n" \
+          "MasterInstanceType: {MasterInstanceType}\n" \
+          "SlaveInstanceType: {SlaveInstanceType}\n" \
+          "AvailabilityZone: {AvailabilityZone}\n" \
+          "KeyName: {KeyName}\n" \
+          "UserNameAndPassword: {UserNameAndPassword}\n"
+    print(fmt.format(**params))
+    return params
 
 
 @cli.command()

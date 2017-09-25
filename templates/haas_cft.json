@@ -403,26 +403,8 @@
                                 "#!/bin/bash",
                                 "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1",
                                 "echo [Initialization] starting the master node",
-				"wget https://raw.githubusercontent.com/vin0110/haas/master/scripts/setup_ami.sh -O /tmp/setup_ami.sh;",                        			         {
-                                    "Fn::Join": [
-                                        " ",
-                                        [
-					    "sudo bash /tmp/setup_ami.sh",
-                                            {
-                                                "Ref": "ThorNodes"
-                                            },
-                                            {
-                                                "Ref": "RoxieNodes"
-                                            },
-                                            {
-                                                "Ref": "SupportNodes"
-                                            },
-                                            {
-                                                "Ref": "SlavesPerNode"
-                                            }
-					]
-				    ]
-				},
+				                "wget https://raw.githubusercontent.com/vin0110/haas/master/scripts/setup_ami.sh -O /tmp/setup_ami.sh;",
+                                "sudo bash /tmp/setup_ami.sh",
                                 "echo [Initialization] completed the master node",
                                 "echo SCRIPT: 'Signal stack that setup of HPCC System is complete.'",
                                 {
@@ -575,26 +557,8 @@
                                 "#!/bin/bash",
                                 "exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1",
                                 "echo [Initialization] starting the slave node",
-				"wget https://raw.githubusercontent.com/vin0110/haas/master/scripts/setup_ami.sh -O /tmp/setup_ami.sh;",                        			         {
-                                    "Fn::Join": [
-                                        " ",
-                                        [
-					    "sudo bash /tmp/setup_ami.sh",
-                                            {
-                                                "Ref": "ThorNodes"
-                                            },
-                                            {
-                                                "Ref": "RoxieNodes"
-                                            },
-                                            {
-                                                "Ref": "SupportNodes"
-                                            },
-                                            {
-                                                "Ref": "SlavesPerNode"
-                                            }
-					]
-				    ]
-				},
+                                "wget https://raw.githubusercontent.com/vin0110/haas/master/scripts/setup_ami.sh -O /tmp/setup_ami.sh;",
+                                "sudo bash /tmp/setup_ami.sh",
                                 "echo [Initialization] completed the slave node",
                                 "echo SCRIPT: 'Signal stack that setup of HPCC System is complete.'",
                                 {
