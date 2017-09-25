@@ -25,7 +25,7 @@ def cli(ctx, **kwargs):
 @cli.command()
 @click.argument('stack-name')
 @click.argument('resource-name',
-                type=click.Choice(['dfs', 'workunit', 'dropzone']))
+                type=click.Choice(['dfs', 'wu', 'dz']))
 @click.argument('checkpoint-name')
 @click.option('--regex', default='*',
               help='The regex (filename glob) to filter file path or '
@@ -70,7 +70,7 @@ def save(ctx, stack_name, resource_name, checkpoint_name, regex, bucket):
 @cli.command()
 @click.argument('checkpoint-name')
 @click.argument('resource-name',
-                type=click.Choice(['dfs', 'workunit', 'dropzone']))
+                type=click.Choice(['dfs', 'wu', 'dz']))
 @click.argument('stack-name')
 @click.option('--regex', default='*',
               help='The regex (filename glob) to filter file path or workunit '
@@ -114,8 +114,7 @@ def progress(ctx, stack_name):
     master_ip = get_master_ip(stack_name)
 
     cmd = RemoteCommand(master_ip,
-                        'source ~/haas/scripts/init.sh; '
-                        'python /home/osr/haas/scripts/checkpoint.py '
+                        'python3 /opt/haas/checkpoint.py '
                         '--name {} available; echo $?',
                         identity_file=ctx.obj['identity'],
                         ssh_user=ctx.obj['username'],
