@@ -1,10 +1,12 @@
 #!/bin/bash
 
+# this script should only executed by the master node as the hpcc user
+
 # grab parameters
-thor_nodes=$1
-roxie_nodes=$2
-support_nodes=$3
-slaves_per_node=$4
+thor_nodes=`cat /opt/haas/hpcc.cfg | cut -d' ' -f1`
+roxie_nodes=`cat /opt/haas/hpcc.cfg | cut -d' ' -f2`
+support_nodes=`cat /opt/haas/hpcc.cfg | cut -d' ' -f3`
+slaves_per_node=`cat /opt/haas/hpcc.cfg | cut -d' ' -f4`
 
 # Get required metadata
 instance_type=`curl -s http://169.254.169.254/latest/meta-data/instance-type`
@@ -49,4 +51,6 @@ tmp_config=/tmp/environment.xml
 			     -roxienodes ${roxie_nodes}\
 			     -supportnodes ${support_nodes}\
 			     -slavesPerNode ${slaves_per_node}
-sudo cp ${tmp_config} /etc/HPCCSystems/environment.xml
+
+cp ${tmp_config} /etc/HPCCSystems/environment.xml
+/opt/HPCCSystems/sbin/hpcc-push.sh -x -s /etc/HPCCSystems/environment.xml -t /etc/HPCCSystems/environment.xml

@@ -15,6 +15,23 @@ def cli(ctx, **kwargs):
 @cli.command()
 @click.argument('stack-name')
 @click.pass_context
+def init(ctx, stack_name):
+    # @TODO: a cache mechanism would be better
+    master_ip = get_ips(stack_name, "MasterASG")[0]
+
+    # @TODO: after we finalize the AMI, we don't need to switch to the
+    # user's directory
+    RemoteCommand(
+        master_ip,
+        'sudo -u hpcc -i bash /opt/haas/auto_hpcc.sh',
+        identity_file=ctx.obj['identity'],
+        ssh_user='ubuntu'
+    ).start()
+
+
+@cli.command()
+@click.argument('stack-name')
+@click.pass_context
 def start(ctx, stack_name):
     # @TODO: a cache mechanism would be better
     master_ip = get_ips(stack_name, "MasterASG")[0]

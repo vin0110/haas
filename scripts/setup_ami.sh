@@ -38,15 +38,14 @@ HAAS_DIR=/opt/haas
 sudo mkdir $HAAS_DIR
 sudo chmod a+rwx $HAAS_DIR
 cd $HAAS_DIR
-for file in auto_hpcc.sh checkpoint.py resize.py /utils.py requirements.txt
+for file in auto_hpcc.sh checkpoint.py resize.py utils.py requirements.txt
 do
     curl -s ${GIT_DIR}/${file} -O ${file}
 done
 
+# generate the cluster config file
+echo ${thor_nodes} ${roxie_nodes} ${support_nodes} ${slaves_per_node} > $HAAS_DIR/hpcc.cfg
+
 # install python libraries needed for checkpoint
 sudo pip3 install -r requirements.txt
 rm -f requirements.txt
-
-# create environment.xml file
-sudo bash ./auto_hpcc.sh ${thor_nodes} ${roxie_nodes} ${support_nodes}\
-     ${slaves_per_node}
