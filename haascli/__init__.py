@@ -6,6 +6,25 @@ __version__ = '0.0.1'
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_LOG = '/tmp/haas.log'
+RCFILE = os.path.join(os.path.expanduser('~'), '.haasrc')
+
+#############
+# default values
+# any key that is allowable in the rcfile, must be defined in this dict.
+#############
+Defaults = dict(
+    haas_dir=os.path.join(os.path.expanduser('~'), '.haas'),
+    region='us-east-1',
+    bucket='hpcc_checkpoint',
+    username='ubuntu',
+    log_file=DEFAULT_LOG,
+    identity=RCFILE,
+    key=None,
+    secret=None,
+    debug=None,
+    test=None,
+    )
+
 
 logger = logging.getLogger(__name__)
 

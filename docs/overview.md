@@ -39,29 +39,6 @@ Initially, data is loaded from S3.
 Before the cluster is torn down, S3 can be updated with the latest
 data.
 
-## Configuration parameter overview
-
-| Parameter | Description | Values | Comment |
-|-----------|-------------|--------|---------|
-| nodes | number of nodes | integer > 0 | |
-| service | number of cluster-wide service nodes| integer > 0 | |
-| separate | sets nodes to separate | boolean | if not separate, then dual |
-| thor nodes | number of thor nodes |  non-negative integer | ignored if separate is false |
-| roxie nodes | number of roxie nodes |  non-negative integer | ignored if separate is false |
-| volumes | list of EBS volumes to attach to dual or thor nodes | | |
-| roxie volumes | list of EBS volumes to attach to roxie nodes | ignored if not separate | |
-
-**Nodes**
-If separate then number of nodes equals thor nodes plus roxies nodes.
-If two of the node parameters are set, the third is calculated.
-If all three are specified, number of nodes is ignored.
-
-**Volumes**
-The volume parameters contains a list volume descriptors.
-Each descriptor has a name (ie, mount point), type, and size.
-The base volume parameter is used for all nodes in dual or Thor nodes
-in separate.
-
 
 
 
