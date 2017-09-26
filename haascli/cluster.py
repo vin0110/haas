@@ -14,6 +14,20 @@ def cli(ctx, **kwargs):
         ctx.abort()
 
 
+@cli.command()
+@click.argument('stack-name')
+@click.pass_context
+def init(ctx, stack_name):
+    master_ip = get_master_ip(stack_name)
+
+    RemoteCommand(
+        master_ip,
+        'sudo -u hpcc -i bash /opt/haas/auto_hpcc.sh',
+        identity_file=ctx.obj['identity'],
+        ssh_user=ctx.obj['username']
+    ).start()
+
+
 def _run_service(ctx, stack_name, service):
     if ctx.obj['test']:
         master_ip = '127.0.0.1'
