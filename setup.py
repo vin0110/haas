@@ -1,14 +1,24 @@
-from setuptools import setup, find_packages
-
-from haascli import __version__
 import unittest
 
+from setuptools import setup, find_packages
+from setuptools.command.test import test as TestCommand
 
-def my_test_suite():
-    test_loader = unittest.TestLoader()
-    test_suite = test_loader.discover('tests')
-    return test_suite
+from haascli import __version__
 
+
+class UnitTest(TestCommand):
+
+    def initialize_options(self):
+        TestCommand.initialize_options(self)
+
+    def finalize_options(self):
+        TestCommand.finalize_options(self)
+
+    def run_tests(self):
+        test_loader = unittest.TestLoader()
+        test_suite = test_loader.discover('tests')
+        runner = unittest.runner.TextTestRunner()
+        runner.run(test_suite)
 
 setup_options = dict(
     name='haascli',
@@ -20,7 +30,7 @@ setup_options = dict(
     scripts=['bin/haas'],
     packages=find_packages(exclude=['tests*']),
     package_data={'haascli': ['examples/*/*.rst']},
-    test_suite='setup.my_test_suite',
+    cmdclass={'test': UnitTest},
     install_requires=[
         'boto3',
         'click',
