@@ -1,6 +1,13 @@
 from setuptools import setup, find_packages
 
 from haascli import __version__
+import unittest
+
+
+def my_test_suite():
+    test_loader = unittest.TestLoader()
+    test_suite = test_loader.discover('tests')
+    return test_suite
 
 
 setup_options = dict(
@@ -13,6 +20,7 @@ setup_options = dict(
     scripts=['bin/haas'],
     packages=find_packages(exclude=['tests*']),
     package_data={'haascli': ['examples/*/*.rst']},
+    test_suite='setup.my_test_suite',
     install_requires=[
         'boto3',
         'click',
