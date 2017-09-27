@@ -109,10 +109,6 @@ def generate_hash(data, prefix='-'):
 
 def get_num_slaves(bucket_name, checkpoint_name):
     # @TODO: seems s3 does not support regex so performance can be an issue
-    print("aws s3 ls s3://{} --human-readable"
-                         " | awk '{}' | grep '{}' | grep file"
-                         " | wc -l".format(
-                             bucket_name, "{print $5}", checkpoint_name))
     num_slaves = execute("aws s3 ls s3://{} --human-readable"
                          " | awk '{}' | grep '{}' | grep file"
                          " | wc -l".format(
@@ -403,28 +399,19 @@ def service_dfs(op, bucket, checkpoint, regex):
     print("CheckpointService is performing the {} operation on the dfs "
           "component".format(op))
 
+    num_slaves = get_num_slaves(bucket, checkpoint) if op == 'restore' else len(node_list)
+
     # when restoring dfs from a larger to a smaller cluster,
     # nodes run multiple restore processes
     with CommandAgent(concurrency=len(node_list)) as agent:
-        if op == 'save':
-            for i in range(len(node_list)):
-                node_ip = node_list[i]
-                slave_index = i + 1
-                cmd = generate_cmd(
-                    op, bucket, checkpoint, regex,
-                    slave_index, CheckpointService.service_output)
-                run_cmd(agent, cmd)
-        elif op == 'restore':
-            num_slaves_source = get_num_slaves(bucket, checkpoint)
-            for i in range(num_slaves_source):
-                node_ip = node_list[i % len(node_list)]
-                slave_index = i + 1
-                cmd = generate_cmd(
-                    op, bucket, checkpoint, regex,
-                    slave_index, CheckpointService.service_output)
-                run_cmd(agent, cmd)
-    # only used for in the restore operation
-    num_slaves = num_slaves_source if op == 'restore' else len(node_list)
+        for i in range(num_slaves):
+            node_ip = node_list[i % len(node_list)]
+            slave_index = i + 1
+            cmd = generate_cmd(
+                op, bucket, checkpoint, regex,
+                slave_index, CheckpointService.service_output)
+            run_cmd(agent, cmd)
+
     dali_metadata(op, bucket, checkpoint, regex, num_slaves)
     exit(0)
 
