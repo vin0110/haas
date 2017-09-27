@@ -119,7 +119,7 @@ For example: the following command
 ```
 $ haas stack create -f config.yaml 2nodes
 ```
-creates a stack named _2nodes_ using the configuration in config.yaml,
+creates a stack named _2nodes_ using the configuration in config.yaml.
 This assumes that the AWS key and region were provide via a configruation
 file.
 

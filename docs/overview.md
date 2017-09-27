@@ -33,7 +33,7 @@ cluster.
 
 Each type of worker (Thor, Roxie, or dual)
 mounts the same number and size of EBS volumes.
-The network is setup _how is it setup?_
+The network is setup using Amazon Virtual Private Cloud (VPC).
 
 Initially, data is loaded from S3.
 Before the cluster is torn down, S3 can be updated with the latest
