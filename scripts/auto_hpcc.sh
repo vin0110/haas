@@ -53,4 +53,4 @@ tmp_config=/tmp/environment.xml
 			     -slavesPerNode ${slaves_per_node}
 
 cp ${tmp_config} /etc/HPCCSystems/environment.xml
-/opt/HPCCSystems/sbin/hpcc-push.sh -x -s /etc/HPCCSystems/environment.xml -t /etc/HPCCSystems/environment.xml
+/opt/HPCCSystems/sbin/hpcc-push.sh -s /etc/HPCCSystems/environment.xml -t /etc/HPCCSystems/environment.xml
