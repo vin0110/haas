@@ -42,7 +42,7 @@ You may set the region as well in the `~/.aws/config` file
 region=us-east-1
 ```
 
-Many of the HaaS command use _ssh_ or _scp_; therefore, you will need to
+Many of the HaaS commands use _ssh_ or _scp_; therefore, you will need to
 create
 [EC2 Key Pairs](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html) on AWS.
 The key pair will have a name (_i.e._, "mykey") that is used when creating EC2
@@ -67,13 +67,11 @@ Moreover, a custom AMI boots faster than the solution provided.
 
 To work with HaaS, EC2 instances must have an HPCC installation and
 support files from HaaS.
-The AMI must have HPCC preloaded or install it on startup.
+The AMI must have HPCC preloaded or it must be installed on startup.
 [Installing HPCC](http://cdn.hpccsystems.com/releases/CE-Candidate-%7Bcurrent_version%7D/docs/Installing_and_RunningTheHPCCPlatform-%7Bcurrent_version_full%7D.pdf)
 can be done in two steps:
 ```
-$ curl
-http://cdn.hpccsystems.com/releases/CE-Candidate-X.Y.Z/bin/platform/hpccsystems-platform-community_X.Y.Z-disto_amd64.deb
--o hpcc-systems.deb
+$ curl http://cdn.hpccsystems.com/releases/CE-Candidate-X.Y.Z/bin/platform/hpccsystems-platform-community_X.Y.Z-disto_amd64.deb -o hpcc-systems.deb
 $ sudo apt-get install hpcc-systems.deb
 ```
 
@@ -90,7 +88,7 @@ HAAS_DIR=/opt/haas
 sudo mkdir $HAAS_DIR
 sudo chmod a+rwx $HAAS_DIR
 cd $HAAS_DIR
-pfor file in auto_hpcc.sh checkpoint.py resize.py utils.py requirements.txt
+for file in auto_hpcc.sh checkpoint.py resize.py utils.py requirements.txt
 do
     curl -s ${GIT_DIR}/${file} -O ${file}
 done
@@ -140,10 +138,10 @@ The CFT uses the AWS
 [userdata](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html)
 to initialize the EC2 instances.
 
-## Creating a stack
+## Creating and using a stack
 
 A stack is created using the _stack create_ command.
-For example:
+For example: the following command
 ```
 $ haas stack create -f config.yaml 2nodes
 ```
@@ -165,7 +163,7 @@ SlavesPerNode: '2'
 This assumes that the AWS key and region were provide via a configruation
 file.
 
-Stack creatation takes several minutes.
+Stack creation takes several minutes.
 It can be tracked with `haas stack events 2nodes`.
 After the stack has been created, start HPCC by
 ```
@@ -184,7 +182,12 @@ The default install does not have user/password.
 
 If you need to restore a previously saved checkpoint
 ```
-$ haas data restore 2nodes checkpoint-name
+$ haas data restore 2nodes resource checkpoint-name
 ```
+where resource is one of _dfs_, _wu_, or _dz_.
 
-
+When finished, you can save the state with the _cluster save_ command.
+Then delete the cluster:
+```
+haas stack delete 2nodes
+```
