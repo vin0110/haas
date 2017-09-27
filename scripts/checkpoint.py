@@ -107,6 +107,20 @@ def generate_hash(data, prefix='-'):
     return hash_prefix + prefix + data
 
 
+def get_num_slaves(bucket_name, checkpoint_name):
+    # @TODO: seems s3 does not support regex so performance can be an issue
+    print("aws s3 ls s3://{} --human-readable"
+                         " | awk '{}' | grep '{}' | grep file"
+                         " | wc -l".format(
+                             bucket_name, "{print $5}", checkpoint_name))
+    num_slaves = execute("aws s3 ls s3://{} --human-readable"
+                         " | awk '{}' | grep '{}' | grep file"
+                         " | wc -l".format(
+                             bucket_name, "{print $5}", checkpoint_name),
+                         capture=True)
+    return int(num_slaves)
+
+
 def workunit(op, bucket, checkpoint, regex):
     topology = HPCCTopology.generate()
     daliserver_ip = topology.get_daliserver_list()[0]
@@ -208,18 +222,9 @@ def dropzone(op, bucket, checkpoint, regex):
     return 0
 
 
-def dfs(op, bucket, checkpoint, regex):
-    topology = HPCCTopology.generate()
-    node_ip = lookup_private_ip()
-    node_list = topology.get_node_list()
-    if node_ip not in node_list:
-        print("This node is neither a Thor nor Roxie node")
-        exit(-1)
-
-    node_index = node_list.index(node_ip) + 1
-
+def dfs(op, bucket, checkpoint, regex, slave_index):
     output_name = generate_hash("{}-files{}.tar.gz".format(
-        checkpoint, node_index))
+        checkpoint, slave_index))
     output_dir = os.path.join('/tmp', checkpoint)
     execute('mkdir -p {}'.format(output_dir))
     output_path = os.path.join(output_dir, output_name)
@@ -230,8 +235,6 @@ def dfs(op, bucket, checkpoint, regex):
         # list only files but not directories
         cmd = "cd {}; find . -type f -name '{}' | tar zcf {} -C . --files-from -".format(DFS_DIR, regex, output_path)
         execute("echo {} | base64 -d | bash".format(base64.b64encode(cmd.encode()).decode()))
-        #execute("cd {}; find . -type f -name '{}' | tar zcf {} -C . --files-from -"
-        #        .format(DFS_DIR, regex, output_path))
         print("Created {}".format(output_path))
         print("Copying {} to s3 at {}".format(output_path, bucket))
         execute("aws s3 cp {} s3://{}".format(output_path, bucket))
@@ -250,7 +253,7 @@ def dfs(op, bucket, checkpoint, regex):
         print("Extracted {}".format(output_path))
 
 
-def dali_metadata(op, bucket, checkpoint, regex):
+def dali_metadata(op, bucket, checkpoint, regex, num_slaves):
     topology = HPCCTopology.generate()
     node_ip = lookup_private_ip()
     if node_ip != topology.get_esp_list()[0]:
@@ -294,7 +297,14 @@ def dali_metadata(op, bucket, checkpoint, regex):
         print("Extracted {}".format(output_path))
 
         node_ip_list = topology.get_node_list()
-        replaced_group_text = ",".join(node_ip_list)
+        if len(node_ip_list) < num_slaves:
+            replaced_node_ip_list = []
+            for i in range(num_slaves):
+                replaced_node_ip_list.append(node_ip_list[i % len(node_ip_list)])
+        else:
+            replaced_node_ip_list = node_ip_list[:num_slaves]
+
+        replaced_group_text = ",".join(replaced_node_ip_list)
         for f in [f for f in os.listdir(workspace_dir) if f.endswith('.xml')]:
             if not pattern.match(f):
                 print("Skip {}".format(f))
@@ -370,6 +380,18 @@ def service_dropzone(op, bucket, checkpoint, regex):
 
 
 def service_dfs(op, bucket, checkpoint, regex):
+    def generate_cmd(op, bucket, checkpoint, regex, slave_index, output):
+        cmd_str = "python3 /opt/haas/checkpoint.py slave_dfs" \
+              " {} {} {} '{}' {} >> {}".format(
+            op, bucket, checkpoint, regex, slave_index, output)
+        return cmd_str
+    def run_cmd(agent, cmd):
+        agent.submit_command(
+            "ssh -i /home/hpcc/.ssh/id_rsa {}".format(node_ip) +
+            " -o StrictHostKeyChecking=no" +
+            " 'echo {} | base64 -d | bash'".format(
+                base64.b64encode(cmd.encode()).decode()),
+            user='hpcc', sudo=True)
     if not CheckpointService.is_available():
         print("CheckpointService is still running")
         exit(1)
@@ -381,16 +403,29 @@ def service_dfs(op, bucket, checkpoint, regex):
     print("CheckpointService is performing the {} operation on the dfs "
           "component".format(op))
 
-    with CommandAgent(concurrency=len(node_list)+1) as agent:
-        for node_ip in node_list:
-            cmd = "python3 /opt/haas/checkpoint.py slave_dfs {} {} {} '{}' >> {}".format(
-                                     op, bucket, checkpoint, regex, CheckpointService.service_output)
-            agent.submit_command("ssh -i /home/hpcc/.ssh/id_rsa {}".format(node_ip) +
-                                 " -o StrictHostKeyChecking=no" +
-                                 " 'echo {} | base64 -d | bash'".format(base64.b64encode(cmd.encode()).decode()),
-                                 user='hpcc', sudo=True
-                                 )
-    dali_metadata(op, bucket, checkpoint, regex)
+    # when restoring dfs from a larger to a smaller cluster,
+    # nodes run multiple restore processes
+    with CommandAgent(concurrency=len(node_list)) as agent:
+        if op == 'save':
+            for i in range(len(node_list)):
+                node_ip = node_list[i]
+                slave_index = i + 1
+                cmd = generate_cmd(
+                    op, bucket, checkpoint, regex,
+                    slave_index, CheckpointService.service_output)
+                run_cmd(agent, cmd)
+        elif op == 'restore':
+            num_slaves_source = get_num_slaves(bucket, checkpoint)
+            for i in range(num_slaves_source):
+                node_ip = node_list[i % len(node_list)]
+                slave_index = i + 1
+                cmd = generate_cmd(
+                    op, bucket, checkpoint, regex,
+                    slave_index, CheckpointService.service_output)
+                run_cmd(agent, cmd)
+    # only used for in the restore operation
+    num_slaves = num_slaves_source if op == 'restore' else len(node_list)
+    dali_metadata(op, bucket, checkpoint, regex, num_slaves)
     exit(0)
 
 
@@ -402,10 +437,12 @@ def main():
     # 4: checkpoint name
     # 5: regex
 
-    if len(sys.argv) != 6:
+    if len(sys.argv) < 6:
         exit(-1)
 
-    what, op, bucket, checkpoint, regex = sys.argv[1:]
+    what, op, bucket, checkpoint, regex = sys.argv[1:6]
+    if what == 'slave_dfs' and len(sys.argv) != 7:
+        exit(-1)
 
     try:
         assert what in ['dfs', 'wu', 'dz', 'slave_dfs']
@@ -420,7 +457,8 @@ def main():
     elif what == 'dz':
         service_dropzone(op, bucket, checkpoint, regex)
     elif what == 'slave_dfs':
-        dfs(op, bucket, checkpoint, regex)
+        slave_index = sys.argv[6]
+        dfs(op, bucket, checkpoint, regex, slave_index)
     else:
         # cannot get here; exit anyway
         exit(-1)
