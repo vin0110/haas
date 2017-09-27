@@ -27,6 +27,18 @@ set then its value is used for the stack name.
 HaaS is configured using the _rc_ file `~/.haasrc` and
 command-ine parameters.
 Command-line parameters overwrite those in the rc file.
+The following configuration parameters can be in the rcfile.
+
+  * haas_dir -- defaults to `~/.haas`
+  * username
+  * log_file
+  * identity -- location of pem file
+  * key -- AWS access key
+  * secret -- AWS secret key
+  * region -- AWS region
+  * bucket -- S3 bucket used for checkpoints (default: 'hpcc_checkpoint')
+  * debug -- print debug messages (default; false)
+  * test -- do not execute (default: false)
 
 ## Cloud formation stack
 
