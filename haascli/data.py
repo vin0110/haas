@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 @click.group(context_settings=dict(help_option_names=['-h', '--help']))
 @click.option('--wait/--no-wait', default=True,
               help='Waiting for the operation to complete')
+@click.option('--verbose/--no-verbose', default=False)
 @click.pass_context
 def cli(ctx, **kwargs):
     """Data related operations
@@ -159,7 +160,8 @@ def resize(ctx, stack_name, regex):
                                  ctx.obj['username'])
 
 
-def _wait_until_complete(master_ip, identity, username):
+def _wait_until_complete(master_ip, identity, username, verbose=False):
+    timeout = 5
     while True:
         cmd = RemoteCommand(master_ip, "pgrep -f checkpoint.py",
                             identity_file=identity,
@@ -170,6 +172,18 @@ def _wait_until_complete(master_ip, identity, username):
         # print(pid_list, len(pid_list.splitlines()))
         if len(pid_list.splitlines()) > 0:
             print("Data service still processing")
-            time.sleep(5)
+            if verbose:
+                print(_fetch_progress(master_ip, identity, username, timeout=timeout))
+            time.sleep(timeout)
         else:
             break
+
+
+def _fetch_progress(master_ip, identity, username, timeout=5):
+    # @TODO: hard coded for now
+    cmd = RemoteCommand(master_ip, "timeout {}s head -n 100 /tmp/.checkpoint.status".format(timeout),
+                        identity_file=identity,
+                        ssh_user=username,
+                        capture=True, check=False)
+    cmd.start()
+    return cmd

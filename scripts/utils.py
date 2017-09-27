@@ -1,9 +1,12 @@
 import logging
+import sys
+import os
+from io import StringIO
 
 from executor.concurrent import CommandPool
 from executor.ssh.client import RemoteCommand
 from executor import ExternalCommand
-
+from executor import execute
 
 class Node(object):
     def __init__(self, hostname, ip):
@@ -85,3 +88,33 @@ class CommandAgent:
         else:
             for node in nodes:
                 self.submit_remote_command(node, cmd, *args, **kwargs)
+
+
+class RedirectOutput:
+    def __init__(self, stdout_file, stderr_file):
+        self.stdout_file = stdout_file
+        self.stderr_file = stderr_file
+
+    def __enter__(self):
+        self._stdout = sys.stdout
+        self._stderr = sys.stderr
+        sys.stdout = self.stdout_file
+        sys.stderr = self.stderr_file
+        return self
+
+    def __exit__(self):
+        sys.stdout = self._stdout
+        sys.stderr = self._stderr
+
+
+class ServiceController:
+    def __init__(self, name):
+        self.name = name
+        self.msg_queue_path = os.path.join('/tmp', '.{}.message'.format(name))
+        if not os.path.exists(self.msg_queue_path):
+            # create a non-blocking message queue
+            execute("mkfifo {msg_queue_path} && exec 4<> {msg_queue_path}".format(
+                msg_queue_path=self.msg_queue_path), check=True)
+
+    def get_output_path(self):
+        return self.msg_queue_path

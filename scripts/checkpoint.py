@@ -9,6 +9,8 @@ import base64
 from executor import execute
 
 from utils import CommandAgent
+from utils import ServiceController
+# from utils import RedirectOutput
 
 DFS_DIR = "/var/lib/HPCCSystems/hpcc-data"
 DROPZONE_DIR = "/var/lib/HPCCSystems/mydropzone"
@@ -346,9 +348,6 @@ def service_workunit(op, bucket, checkpoint, regex):
     try:
         print("Workunit service is running")
         return workunit(op, bucket, checkpoint, regex)
-        #CheckpointService.run("python /opt/haas/checkpoint.py "
-        #                      "wu {} {} {} '{}'"
-        #                      .format(op, bucket, checkpoint, regex))
     except Exception:
         import traceback
         traceback.print_exc()
@@ -360,10 +359,6 @@ def service_dropzone(op, bucket, checkpoint, regex):
     if CheckpointService.is_available():
         print("Dropzone service is running")
         return dropzone(op, bucket, checkpoint, regex)
-        # CheckpointService.run("python /opt/haas/checkpoint.py "
-        #                       "dz {} {} {} '{}'"
-        #                       .format(op, bucket, checkpoint, regex))
-        return 0
     else:
         print('Failed to run the dropzone service')
         return -1
@@ -381,16 +376,22 @@ def service_dfs(op, bucket, checkpoint, regex):
     print("CheckpointService is performing the {} operation on the dfs "
           "component".format(op))
 
-    with CommandAgent(concurrency=len(node_list)+1) as agent:
+    controller = ServiceController('dfs')
+    with CommandAgent(concurrency=len(node_list)) as agent:
         for node_ip in node_list:
-            cmd = "python3 /opt/haas/checkpoint.py slave_dfs {} {} {} '{}' >> {}".format(
-                                     op, bucket, checkpoint, regex, CheckpointService.service_output)
+            cmd = "python3 /opt/haas/checkpoint.py slave_dfs {} {} {} '{}'".format(
+                                     op, bucket, checkpoint, regex)
+            print(cmd)
             agent.submit_command("ssh -i /home/hpcc/.ssh/id_rsa {}".format(node_ip) +
                                  " -o StrictHostKeyChecking=no" +
                                  " 'echo {} | base64 -d | bash'".format(base64.b64encode(cmd.encode()).decode()),
-                                 user='hpcc', sudo=True
+                                 user='hpcc', sudo=True,
+                                 stdout_file=open(controller.get_output_path(), 'w'),
+                                 stderr_file=open(controller.get_output_path(), 'w')
                                  )
-    dali_metadata(op, bucket, checkpoint, regex)
+    # with open(controller.get_output_path(), 'w') as f:
+    #   with RedirectOutput(f, f):
+    #        dali_metadata(op, bucket, checkpoint, regex)
     exit(0)
 
 
