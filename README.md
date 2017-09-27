@@ -55,60 +55,13 @@ Or it can be set in the `~/.haasrc` file, as
 identity=~/.haas/mykey.pem
 ```
 
-## Create an Amazon Machine Image
-
-When EC2 instances are created they are overlaid with an image.
-This project uses a vanilla Ubuntu AMI.
-However, it is expected that most users will create their own AMI because
-you should not trust someone else.
-Additionally, the user will want to install a specific the HPCC version and
-desired plugins.
-Moreover, a custom AMI boots faster than the solution provided.
-
-To work with HaaS, EC2 instances must have an HPCC installation and
-support files from HaaS.
-The AMI must have HPCC preloaded or it must be installed on startup.
-[Installing HPCC](http://cdn.hpccsystems.com/releases/CE-Candidate-%7Bcurrent_version%7D/docs/Installing_and_RunningTheHPCCPlatform-%7Bcurrent_version_full%7D.pdf)
-can be done in two steps:
-```
-$ curl http://cdn.hpccsystems.com/releases/CE-Candidate-X.Y.Z/bin/platform/hpccsystems-platform-community_X.Y.Z-disto_amd64.deb -o hpcc-systems.deb
-$ sudo apt-get install hpcc-systems.deb
-```
-
-Some files from this repository must be copied onto the EC2
-instance.
-Again, these can be preloaded in the AMI or copied in the
-installation.
-The following snippet of code from
-[setup_ami.sh](https://github.com/vin0110/haas/blob/master/scripts/setup_ami.sh)
-copies the necessary files to the proper directory.
-```
-GIT_DIR=https://raw.githubusercontent.com/vin0110/haas/master/scripts
-HAAS_DIR=/opt/haas
-sudo mkdir $HAAS_DIR
-sudo chmod a+rwx $HAAS_DIR
-cd $HAAS_DIR
-for file in auto_hpcc.sh checkpoint.py resize.py utils.py requirements.txt
-do
-    curl -s ${GIT_DIR}/${file} -O ${file}
-done
-```
-
-These requirements are formalized in the
-[setup_ami.sh](https://github.com/vin0110/haas/blob/master/scripts/setup_ami.sh)
-file.
-It shows all the steps necessary to configure a vanilla AMI for
-use with the default CloudFormation Template (CFT).
-Some of the steps are specific to this CFT and may not be
-necessary for each custom solution.
-
-## Create a CloudFormationtemplate
+## Configure the stack
 
 The project comes with a default
 [CFT](https://github.com/vin0110/haas/blob/master/templates/haas_cft.json).
 It creates a stack with a configurable number of nodes and
 instances types.
-The parameters of a template can be discovered with the _stack template_
+The parameters of a template can be discovered with the **stack template**
 command.
 ```
 $ haas stack template https://raw.githubusercontent.com/vin0110/haas/master/templates/haas_cft.json
@@ -126,27 +79,24 @@ MasterInstanceType             String                         c4.large
 RoxieNodes                     Number                         0
 SlavesPerNode                  Number                         1
 ```
-Not all parameters are required.
 
 The size of the cluster is determined by several parameters.
-The cluster size is the number of Thor and Roxie slave nodes.
-The cluster size must be greater than both the Thor and Roxie nodes and
-no larger than their sum.
-If Thor is non-zero than the number of support nodes will be at least 1.
+A total of `ClusterSize` + `SupportNodes` nodes are created, the former
+is the number of _slave_ nodes and the latter the number of _master_
+nodes.
+`ThorNodes` and `RoxieNodes` define the number of slaves nodes in each
+cluster.
+The `ClusterSize` should be greater than both `ThorNodes` and
+`RoxieNodes` and not greater than their sum.
 
-The CFT uses the AWS
-[userdata](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/user-data.html)
-to initialize the EC2 instances.
-
-## Creating and using a stack
-
-A stack is created using the _stack create_ command.
-For example: the following command
+The easiest way to configure a template is with the **stack template**
+command and the `--configure` option:
 ```
-$ haas stack create -f config.yaml 2nodes
+$ haas stack template --configure https://raw.githubusercontent.com/vin0110/haas/master/templates/haas_cft.json
 ```
-creates a stack named _2nodes_ using the configuration in config.yaml,
-which may be something like:
+This will prompt you for values for the parameters and will output a
+configuration in YAML syntax.
+For example:
 ```
 AMIId: ami-cd0f5cb6
 KeyName: osr
@@ -160,6 +110,16 @@ MasterInstanceType: t2.micro
 RoxieNodes: '0'
 SlavesPerNode: '2'
 ```
+Save this to a file such as `~/.haas/config.yaml`.
+
+## Creating and using a stack
+
+A stack is created using the **stack create** command.
+For example: the following command
+```
+$ haas stack create -f config.yaml 2nodes
+```
+creates a stack named _2nodes_ using the configuration in config.yaml,
 This assumes that the AWS key and region were provide via a configruation
 file.
 
