@@ -399,7 +399,11 @@ def service_dfs(op, bucket, checkpoint, regex):
     print("CheckpointService is performing the {} operation on the dfs "
           "component".format(op))
 
-    num_slaves = get_num_slaves(bucket, checkpoint) if op == 'restore' else len(node_list)
+    # determine the number of slave to save or restore
+    if op == 'save':
+        num_slaves = len(node_list)
+    elif op == 'restore':
+        num_slaves = get_num_slaves(bucket, checkpoint)
 
     # when restoring dfs from a larger to a smaller cluster,
     # nodes run multiple restore processes
