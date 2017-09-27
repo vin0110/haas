@@ -37,11 +37,10 @@ def generate_distribute_ecl(logical_filename, esp_ip):
     ecl_code = '''IMPORT STD;
 layout := {ecl_record}
 
-ds := DATASET('~{logical_filename}', layout,  {file_format});
-STD.File.DeleteLogicalFile('~{logical_filename}.bak');
-OUTPUT(DISTRIBUTE(ds), ,'~{logical_filename}.bak');
-STD.File.DeleteLogicalFile('~{logical_filename}');
-STD.File.RenameLogicalFile('~{logical_filename}.bak', '~{logical_filename}');
+STD.File.RenameLogicalFile('~{logical_filename}', '~{logical_filename}.origin');
+ds := DATASET('~{logical_filename}.origin', layout, {file_format});
+OUTPUT(DISTRIBUTE(ds), ,'~{logical_filename}');
+STD.File.DeleteLogicalFile('~{logical_filename}.origin');
 '''.format(ecl_record=ecl_record, logical_filename=logical_filename, file_format=file_format)
 
     return ecl_code, target_cluster
