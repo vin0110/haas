@@ -67,7 +67,7 @@ def _run_service(ctx, stack_name, service):
 @click.argument('stack-name')
 @click.pass_context
 def start(ctx, stack_name):
-    '''Start hPCC service on the cluster.'''
+    '''Start HPCC service on the cluster.'''
     _run_service(ctx, stack_name, 'start')
 
 
@@ -84,7 +84,7 @@ def stop(ctx, stack_name):
 @click.pass_context
 def restart(ctx, stack_name):
     '''Restart HPCC services on the cluster.'''
-    _run_service(ctx, stack_name, 'stop')
+    _run_service(ctx, stack_name, 'restart')
 
 
 @cli.command()
