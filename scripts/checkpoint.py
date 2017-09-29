@@ -110,7 +110,7 @@ def generate_hash(data, prefix='-'):
 def get_num_slaves(bucket_name, checkpoint_name):
     # @TODO: seems s3 does not support regex so performance can be an issue
     num_slaves = execute("aws s3 ls s3://{} --human-readable"
-                         " | awk '{}' | grep '{}' | grep file"
+                         " | awk '{}' | grep '{}-' | grep file"
                          " | wc -l".format(
                              bucket_name, "{print $5}", checkpoint_name),
                          capture=True)
