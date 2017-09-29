@@ -81,6 +81,30 @@
             "Default": "1",
             "Description": "Number of THOR slave threads per slave instance",
             "Type": "Number"
+        },
+        "MasterVolumeSize": {
+            "Default": "60",
+            "MinValue": "8",
+            "Description": "The size of the EBS volume mounted to the nodes",
+            "Type": "Number"
+        },
+        "MasterVolumeType": {
+            "Default": "gp2",
+            "AllowedValues" : ["gp2", "io1", "st1", "sc1"],
+            "Description": "The type of the EBS volume mounted to the nodes",
+            "Type": "String"
+        },
+        "SlaveVolumeSize": {
+            "Default": "60",
+            "MinValue": "8",
+            "Description": "The size of the EBS volume mounted to the nodes",
+            "Type": "Number"
+        },
+        "SlaveVolumeType": {
+            "Default": "gp2",
+            "AllowedValues" : ["gp2", "io1", "st1", "sc1"],
+            "Description": "The type of the EBS volume mounted to the nodes",
+            "Type": "String"
         }
     },
     "Resources": {
@@ -370,7 +394,7 @@
             "CreationPolicy": {
                 "ResourceSignal": {
                   "Count": "1",
-                  "Timeout": "PT5M"
+                  "Timeout": "PT15M"
                 }
             },
             "Type": "AWS::AutoScaling::AutoScalingGroup"
@@ -382,11 +406,21 @@
                     "Ref": "HPCCInstanceProfile"
                 },
                 "ImageId": {
-		    "Ref": "AMIId"
+                    "Ref": "AMIId"
                 },
                 "InstanceType": {
                     "Ref": "MasterInstanceType"
                 },
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/sda1",
+                        "Ebs": {
+                            "VolumeSize": { "Ref": "MasterVolumeSize" },
+                            "DeleteOnTermination": true,
+                            "VolumeType": { "Ref": "MasterVolumeType" }
+                        }
+                    }
+                ],
                 "KeyName": {
                     "Ref": "KeyName"
                 },
@@ -542,7 +576,7 @@
             "CreationPolicy": {
                 "ResourceSignal": {
                   "Count": {"Ref": "ClusterSize"},
-                  "Timeout": "PT5M"
+                  "Timeout": "PT15M"
                 }
             },
             "Type": "AWS::AutoScaling::AutoScalingGroup"
@@ -554,11 +588,21 @@
                     "Ref": "HPCCInstanceProfile"
                 },
                 "ImageId": {
-		    "Ref": "AMIId"
+                    "Ref": "AMIId"
                 },
                 "InstanceType": {
                     "Ref": "SlaveInstanceType"
                 },
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/sda1",
+                        "Ebs": {
+                            "VolumeSize": { "Ref": "SlaveVolumeSize" },
+                            "DeleteOnTermination": true,
+                            "VolumeType": { "Ref": "SlaveVolumeType" }
+                        }
+                    }
+                ],
                 "KeyName": {
                     "Ref": "KeyName"
                 },
