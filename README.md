@@ -1,12 +1,24 @@
 # HaaS
 HPCC as a service: HPCC cluster management in clouds.
 
+## Requirements
+* python 3+
+* pip
+
+```
+sudo apt-get install -y python3-setuptools python3-dev
+wget https://bootstrap.pypa.io/get-pip.py -O /tmp/get-pip.py
+sudo python3 /tmp/get-pip.py
+pip install ruamel.yaml
+```
+
+
 ## Installation
 
 First download the source.
 Either clone the repository
 ```shell
-$ git clone git@github.com:vin0110/haas.git
+$ git clone https://github.com/vin0110/haas.git
 ```
 or download zip file
 ```shell
@@ -17,7 +29,7 @@ $ mv haas-master haas
 Install HaaS
 ```shell
 $ cd haas
-$ python setup.py install
+$ sudo python3 setup.py install
 ````
 
 ## Configure AWS
@@ -117,37 +129,37 @@ Save this to a file such as `~/.haas/config.yaml`.
 A stack is created using the **stack create** command.
 For example: the following command
 ```
-$ haas stack create -f config.yaml 2nodes
+$ haas stack create -f config.yaml twonodes
 ```
-creates a stack named _2nodes_ using the configuration in config.yaml.
+creates a stack named _twonodes_ using the configuration in config.yaml.
 This assumes that the AWS key and region were provide via a configruation
 file.
 
 Stack creation takes several minutes.
-It can be tracked with `haas stack events 2nodes`.
+It can be tracked with `haas stack events twonodes`.
 After the stack has been created, start HPCC by
 ```
-$ haas cluster start 2nodes
+$ haas cluster start twonodes
 ```
 if the identity file is defined in `~/.haasrc` or
 ```
-$ haas -i ~/.haas/mykey.pem cluster start 2nodes
+$ haas -i ~/.haas/mykey.pem cluster start twonodes
 ```
 if it has not.
 Now the HPCC cluster is running and you can start executing on the
 cluster.
-Execute `haas stack ip 2nodes` to get the public IP of the root nodes and
+Execute `haas stack ip twonodes` to get the public IP of the root nodes and
 logon to ECL Watch.
 The default install does not have user/password.
 
 If you need to restore a previously saved checkpoint
 ```
-$ haas data restore 2nodes resource checkpoint-name
+$ haas data restore twonodes resource checkpoint-name
 ```
 where resource is one of _dfs_, _wu_, or _dz_.
 
 When finished, you can save the state with the _cluster save_ command.
 Then delete the cluster:
 ```
-haas stack delete 2nodes
+haas stack delete twonodes
 ```
