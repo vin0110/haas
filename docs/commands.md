@@ -27,6 +27,18 @@ set then its value is used for the stack name.
 HaaS is configured using the _rc_ file `~/.haasrc` and
 command-line parameters.
 Command-line parameters overwrite those in the rc file.
+The following configuration parameters can be specified in the rcfile.
+
+  * haas_dir -- defaults to `~/.haas`
+  * username
+  * log_file
+  * identity -- location of pem file
+  * key -- AWS access key
+  * secret -- AWS secret key
+  * region -- AWS region
+  * bucket -- S3 bucket used for checkpoints (default: 'hpcc_checkpoint')
+  * debug -- print debug messages (default; false)
+  * test -- do not execute (default: false)
 
 ## Cloud formation stack
 
@@ -38,7 +50,7 @@ A CFT may have parameters (such as number of nodes).
 HaaS supports passing parameters to the CFT.
 The CFT defines the parameters.
 HaaS will read parameters from either a configuration file
-is stored in a YAML format or the command line.
+stored in a YAML format or the command line.
 It passes these parameters to AWS in the `haas stack create` command.
 
 All stack commands accept parameters that specify the AWS
@@ -52,13 +64,11 @@ AWS toolset.
   it uses that.
   If there is a named configuration file **and** there the stack-name
   has not been defined, it first defines the stack-name and then
-  creates the stack
-
+  creates the stack.
   Error if a cluster of same name is active.
+  One can create several clusters from the same configuration file.
 
-  Can create several clusters from the same configuration file.
-
-  * `haas stack list]` shows the active stacks.
+  * `haas stack list` shows the active stacks.
 
   * `haas stack delete [<stack-name>]` destroys the named stack.
 
@@ -77,12 +87,12 @@ The default initialization file for these tools is `~/ecl.ini`.
   The configuration for the cluster was defined when the stack was
   created.
 
-  *  `haas cluster [<stack-name>] stop [stack-name]` stops the cluster.
+  * `haas cluster [<stack-name>] stop [stack-name]` stops the cluster.
 
   * `haas cluster [<stack-name>] restart [stack-name]` restarts the cluster.
 
-  * `haas cluster [<stack-name>] status` gives status of the HPCC cluster.
-  What is this?
+  * `haas cluster [<stack-name>] status` gives status of the HPCC cluster --
+  whether components work normally on cluster nodes.
 
 ## Data management
 
@@ -96,7 +106,9 @@ When necessary, these commands get AWS credentials as described above.
   bucket.
 
   * `haas data resize stack-name`
-  Re-distributes files from current layout to one per cluster.
+  Re-distributes files from previous layout to current layout.
+  This is particularly useful when restore from a cluster with different
+  number of slave nodes with the current cluster.
 
 
 
