@@ -1,12 +1,12 @@
 # Commands
 
-Commands are invoked from the commandline as such:
+Commands are invoked from the commandline in the following way:
 ```
 haas [global-options] <command class> <sub command> [options] [parameters]
 ```
 
 Use `haas --help`, `haas class --help`, or `haas class command --help` to
-get help.
+show the helpfile.
 
 There are three classes of commands:
 
@@ -18,14 +18,14 @@ Syntax:
   * Braces "[]" denote optional parameters
   * Angle brackets "<>" denote parameters by name
 
-Many command operate on a specific stack by name.
+Many commands operate on a specific stack by name.
 If the stack name is not provided and environ variable "HAAS_STACK" is
 set then its value is used for the stack name.
 
 ## Configuration
 
 HaaS is configured using the _rc_ file `~/.haasrc` and
-command-ine parameters.
+command-line parameters.
 Command-line parameters overwrite those in the rc file.
 
 ## Cloud formation stack
