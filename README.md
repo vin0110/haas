@@ -16,13 +16,13 @@ aws configure
 mkdir ~/.haas
 ```
 
+[Read](https://github.com/vin0110/haas/blob/master/docs/configuration.md) how to configure your environment.
+
 
 
 ## Steps to create a stack
 
 ```shell
-# generate haas configuration
-haas config new mycluster1
 # create the stack
 haas --debug stack create mycluster1 -p template_url=templates/haas_cft.json -p KeyName=osr -p MasterInstanceType=c4.large -p SlaveInstanceType=c4.large
 ```
