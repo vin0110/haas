@@ -13,7 +13,7 @@ action_prepare ()
     pip install awacs
     pip install executor
     pip install click
-    #pip install requests 2>&1 > /dev/null
+    pip install requests 2>&1 > /dev/null
     #pip install netifaces 2>&1 > /dev/null
     #pip install pyyaml 2>&1 > /dev/null
     #pip install psutil 2>&1 > /dev/null
